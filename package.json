@@ -1,0 +1,28 @@
+{
+  "name": "eveng-catering-backend",
+  "version": "1.0.0",
+  "description": "Enterprise Express & MongoDB REST API Backend for Eveng Catering",
+  "main": "src/app.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node src/server.js",
+    "seed": "node src/seed/seeder.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-validator": "^7.2.1",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.10.1",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "mongodb": "^6.14.2",
+    "nodemailer": "^6.10.0",
+    "@google/genai": "^2.4.0"
+  }
+}

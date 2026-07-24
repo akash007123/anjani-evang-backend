@@ -1,0 +1,455 @@
+import nodemailer from 'nodemailer';
+
+let transporter = null;
+
+export function getTransporter() {
+  if (transporter) return transporter;
+
+  const host = process.env.SMTP_HOST;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  const port = Number(process.env.SMTP_PORT) || 587;
+  const secure = process.env.SMTP_SECURE === 'true' || port === 465;
+
+  if (!host || !user || !pass) {
+    console.warn('[Email] SMTP not configured. Using streamTransport fallback.');
+    transporter = nodemailer.createTransport({
+      streamTransport: true,
+      newline: 'unix',
+      buffer: true
+    });
+  } else {
+    transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure,
+      auth: { user, pass },
+      tls: { rejectUnauthorized: false }
+    });
+  }
+
+  return transporter;
+}
+
+function escapeHtml(unsafe) {
+  if (!unsafe) return '';
+  return String(unsafe)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+export function generateBrandEmailHtml({
+  recipientName,
+  title,
+  subtitle,
+  badgeText,
+  summaryFields = [],
+  nextSteps = [],
+  ctaText = 'Visit Eveng Catering',
+  ctaUrl = 'https://evengcatering.com'
+}) {
+  const summaryRowsHtml = summaryFields
+    .map(
+      (f) => `
+      <tr>
+        <td style="padding: 10px 14px; font-family: 'Arial', sans-serif; font-size: 13px; font-weight: bold; color: #102417; border-bottom: 1px solid #e2e8f0; width: 150px;">${escapeHtml(f.label)}</td>
+        <td style="padding: 10px 14px; font-family: 'Arial', sans-serif; font-size: 13px; color: #334155; border-bottom: 1px solid #e2e8f0;">${escapeHtml(f.value)}</td>
+      </tr>`
+    )
+    .join('');
+
+  const nextStepsHtml = nextSteps
+    .map(
+      (step, idx) => `
+      <li style="margin-bottom: 10px; font-family: 'Arial', sans-serif; font-size: 13px; color: #334155; line-height: 1.5;">
+        <strong style="color: #D4AF37;">Step 0${idx + 1}:</strong> ${escapeHtml(step)}
+      </li>`
+    )
+    .join('');
+
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <title>${escapeHtml(title)}</title>
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: Arial, sans-serif;">
+      <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 620px; margin: 30px auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05);">
+        <tr>
+          <td align="center" style="background-color: #102417; padding: 32px 24px; border-bottom: 4px solid #D4AF37;">
+            <div style="display: inline-block; width: 42px; height: 42px; border-radius: 10px; background-color: #D4AF37; text-align: center; line-height: 42px; color: #102417; font-weight: bold; font-size: 20px; margin-bottom: 10px;">E</div>
+            <h1 style="margin: 0; font-family: Georgia, serif; font-size: 22px; font-weight: bold; color: #ffffff; letter-spacing: 2px;">EVENG CATERING</h1>
+            <p style="margin: 4px 0 0 0; font-size: 11px; color: #D4AF37; font-weight: bold; letter-spacing: 1.5px; text-transform: uppercase;">Luxury Culinary &amp; Event Logistics</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 32px 32px 24px 32px;">
+            ${badgeText ? `<div style="display: inline-block; padding: 4px 12px; background-color: #fef3c7; color: #92400e; font-size: 11px; font-weight: bold; border-radius: 20px; margin-bottom: 16px;">${escapeHtml(badgeText)}</div>` : ''}
+            <h2 style="margin: 0 0 12px 0; font-family: Georgia, serif; font-size: 20px; color: #102417;">Dear ${escapeHtml(recipientName)},</h2>
+            <p style="margin: 0 0 24px 0; font-size: 14px; color: #475569; line-height: 1.6;">${subtitle}</p>
+            ${summaryFields.length > 0 ? `
+            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #fcfbf9; border: 1px solid #ebdcb9; border-radius: 12px; overflow: hidden; margin-bottom: 24px;">
+              <tr>
+                <td style="padding: 12px 14px; background-color: #fef9ed; border-bottom: 1px solid #ebdcb9;">
+                  <h3 style="margin: 0; font-size: 13px; font-weight: bold; color: #102417; text-transform: uppercase; letter-spacing: 0.5px;">Summary Details</h3>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 4px 8px;">
+                  <table border="0" cellpadding="0" cellspacing="0" width="100%">${summaryRowsHtml}</table>
+                </td>
+              </tr>
+            </table>` : ''}
+            ${nextSteps.length > 0 ? `
+            <div style="padding: 20px; background-color: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 12px; margin-bottom: 24px;">
+              <h3 style="margin: 0 0 12px 0; font-family: Georgia, serif; font-size: 14px; color: #102417;">What Happens Next?</h3>
+              <ul style="margin: 0; padding: 0; list-style: none;">${nextStepsHtml}</ul>
+            </div>` : ''}
+            <div style="text-align: center; margin-top: 28px;">
+              <a href="${escapeHtml(ctaUrl)}" target="_blank" style="display: inline-block; padding: 12px 28px; background-color: #102417; color: #D4AF37; font-size: 13px; font-weight: bold; text-decoration: none; border-radius: 8px;">${escapeHtml(ctaText)}</a>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 24px 32px; background-color: #f1f5f9; border-top: 1px solid #e2e8f0; text-align: center; font-size: 12px; color: #64748b; line-height: 1.5;">
+            <p style="margin: 0 0 6px 0; font-weight: bold; color: #102417;">Eveng Catering Services</p>
+            <p style="margin: 0 0 10px 0;">Direct Hotline: +91 98765 43210 | Email: inquiries@evengcatering.com</p>
+            <p style="margin: 0; font-size: 11px; color: #94a3b8;">&copy; ${new Date().getFullYear()} Eveng Catering. All Rights Reserved.</p>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>`;
+}
+
+export async function sendMail({ to, subject, html, text }) {
+  try {
+    const mailTransporter = getTransporter();
+    const from = process.env.SMTP_FROM || '"Eveng Catering Services" <no-reply@evengcatering.com>';
+    const info = await mailTransporter.sendMail({
+      from,
+      to,
+      subject,
+      html,
+      text: text || 'Thank you for contacting Eveng Catering Services.'
+    });
+    console.log(`[Email] Dispatched to ${to} (Subject: "${subject}")`);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error(`[Email] Error sending to ${to}:`, error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function sendBookingAckEmail(bookingData) {
+  if (!bookingData || !bookingData.email) return false;
+  const subject = `Booking Confirmation Received: Ref #${bookingData.bookingReference || 'EVG-HOLD'}`;
+  const html = generateBrandEmailHtml({
+    recipientName: bookingData.fullName || 'Valued Client',
+    title: subject,
+    badgeText: 'RESERVATION HOLD ACKNOWLEDGMENT',
+    subtitle: `Thank you for choosing Eveng Catering Services! We have successfully received your reservation inquiry for your upcoming <strong>${escapeHtml(bookingData.eventType || 'Event')}</strong>. Our banqueting concierge is reviewing your request.`,
+    summaryFields: [
+      { label: 'Booking Reference', value: `#${bookingData.bookingReference}` },
+      { label: 'Event Date & Time', value: `${bookingData.eventDate || 'TBD'} at ${bookingData.eventTime || '12:00 PM'}` },
+      { label: 'Guest Count', value: `${bookingData.guestCount || 1} Guests` },
+      { label: 'Preferred Cuisine', value: bookingData.preferredCuisine || 'Multi-Cuisine' },
+      { label: 'Catering Package', value: bookingData.cateringPackage || 'Royal Buffet' },
+      { label: 'Venue Location', value: `${bookingData.venueAddress || 'Venue'}, ${bookingData.city || ''}` }
+    ],
+    nextSteps: [
+      'Our Executive Banquet Manager will check date slot availability on our central calendar.',
+      'A dedicated concierge will contact you within 2 business hours to verify menu selections.',
+      'We will schedule a complimentary food tasting session at our master kitchen.'
+    ]
+  });
+  return sendMail({ to: bookingData.email, subject, html });
+}
+
+export async function sendContactAckEmail(contactData) {
+  if (!contactData || !contactData.email) return false;
+  const subject = 'Inquiry Received: Thank you for contacting Eveng Catering';
+  const summaryFields = [
+    { label: 'Name', value: contactData.name },
+    { label: 'Email', value: contactData.email }
+  ];
+  if (contactData.phone) summaryFields.push({ label: 'Phone Number', value: contactData.phone });
+  if (contactData.eventType) summaryFields.push({ label: 'Event Type', value: contactData.eventType });
+  if (contactData.eventDate) summaryFields.push({ label: 'Target Event Date', value: contactData.eventDate });
+  if (contactData.guestCount) summaryFields.push({ label: 'Estimated Guests', value: `${contactData.guestCount} People` });
+  if (contactData.message) summaryFields.push({ label: 'Inquiry Message', value: contactData.message });
+
+  const html = generateBrandEmailHtml({
+    recipientName: contactData.name || 'Valued Guest',
+    title: subject,
+    badgeText: 'INQUIRY ACKNOWLEDGMENT',
+    subtitle: 'Thank you for reaching out to Eveng Catering! We have received your inquiry. Our event planning representatives will review your preferences and respond promptly.',
+    summaryFields,
+    nextSteps: [
+      'Our customer support team will analyze your specific inquiry and dietary preferences.',
+      'An event coordinator will reach out to provide customized package recommendations and pricing options.',
+      'We will schedule a personal consultation to tailor every culinary detail of your event.'
+    ]
+  });
+  return sendMail({ to: contactData.email, subject, html });
+}
+
+// --- Frontend merged rich template system ---
+
+function generateHtmlTemplate({ customerName, subject, mainTitle, mainMessage, summaryFields, nextSteps, ctaText = 'Visit Our Website', ctaUrl = 'https://evengcatering.com' }) {
+  const summaryRowsHtml = summaryFields
+    .map(
+      (f) => `
+      <tr>
+        <td style="padding: 10px 12px; font-family: 'Plus Jakarta Sans', Arial, sans-serif; font-size: 13px; font-weight: bold; color: #1F3E29; border-bottom: 1px solid #ECE7DE; width: 150px; text-transform: uppercase; letter-spacing: 0.5px;">${escapeHtml(f.label)}</td>
+        <td style="padding: 10px 12px; font-family: 'Plus Jakarta Sans', Arial, sans-serif; font-size: 13px; color: #1A1A1A; border-bottom: 1px solid #ECE7DE;">${escapeHtml(f.value)}</td>
+      </tr>`
+    )
+    .join('');
+
+  const nextStepsHtml = nextSteps
+    .map(
+      (step, idx) => `
+      <li style="margin-bottom: 12px; font-family: 'Plus Jakarta Sans', Arial, sans-serif; font-size: 13px; color: #1A1A1A; line-height: 1.6;">
+        <strong style="color: #D49A5B; margin-right: 4px;">0${idx + 1}.</strong> ${escapeHtml(step)}
+      </li>`
+    )
+    .join('');
+
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${escapeHtml(subject)}</title>
+    </head>
+    <body style="background-color: #FDFBF7; padding: 40px 15px; font-family: 'Plus Jakarta Sans', Arial, sans-serif;">
+      <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border: 1px solid #EAE5DB; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 30px rgba(31,62,41,0.04);">
+        <tr>
+          <td align="center" style="background-color: #1F3E29; padding: 35px 40px; border-bottom: 4px solid #D49A5B;">
+            <div style="display: inline-block; width: 44px; height: 44px; border-radius: 50%; background-color: #D49A5B; text-align: center; line-height: 44px; margin-bottom: 12px; color: #1F3E29; font-weight: bold; font-size: 20px;">E</div>
+            <h1 style="margin: 0; font-family: 'Playfair Display', Georgia, serif; font-size: 22px; font-weight: 800; color: #ffffff; letter-spacing: 4px; text-transform: uppercase;">EVENG CATERING</h1>
+            <p style="margin: 4px 0 0 0; font-size: 10px; color: #D49A5B; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;">Culinary Integrity &amp; Bespoke Banquets</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 40px 40px 30px 40px;">
+            <table border="0" cellpadding="0" cellspacing="0" width="100%">
+              <tr>
+                <td style="padding-bottom: 25px;">
+                  <h2 style="margin: 0 0 16px 0; font-family: 'Playfair Display', Georgia, serif; font-size: 20px; font-weight: 700; color: #1F3E29;">Hello ${escapeHtml(customerName)},</h2>
+                  <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #4A5568;">${mainMessage}</p>
+                </td>
+              </tr>
+              ${summaryFields.length > 0 ? `
+              <tr>
+                <td style="padding-bottom: 30px;">
+                  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #F7F4EE; border: 1px solid #ECE7DE; border-radius: 16px; overflow: hidden;">
+                    <tr>
+                      <td style="padding: 16px 20px; background-color: #ECE7DE; border-bottom: 1px solid #ECE7DE;">
+                        <h3 style="margin: 0; font-family: 'Playfair Display', Georgia, serif; font-size: 14px; font-weight: bold; color: #1F3E29; text-transform: uppercase; letter-spacing: 1px;">Submitted Details Summary</h3>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 10px 20px;">
+                        <table border="0" cellpadding="0" cellspacing="0" width="100%">${summaryRowsHtml}</table>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>` : ''}
+              <tr>
+                <td style="padding: 24px; background-color: #FDFBF7; border: 1px dashed #D49A5B; border-radius: 16px; margin-bottom: 30px;">
+                  <h3 style="margin: 0 0 14px 0; font-family: 'Playfair Display', Georgia, serif; font-size: 15px; font-weight: bold; color: #1F3E29;">What Happens Next?</h3>
+                  <ul style="margin: 0; padding: 0; list-style: none;">${nextStepsHtml}</ul>
+                </td>
+              </tr>
+              <tr><td style="height: 25px;"></td></tr>
+              <tr>
+                <td align="center" style="padding-bottom: 15px;">
+                  <table border="0" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td align="center" style="border-radius: 12px; background-color: #D49A5B;">
+                        <a href="${escapeHtml(ctaUrl)}" target="_blank" style="display: inline-block; padding: 14px 28px; font-size: 13px; font-weight: bold; color: #1F3E29; text-decoration: none; border-radius: 12px; border: 1px solid #D49A5B; text-transform: uppercase; letter-spacing: 1px;">${escapeHtml(ctaText)}</a>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 30px 40px; background-color: #FDFBF7; border-top: 1px solid #ECE7DE; border-bottom: 1px solid #ECE7DE;">
+            <h4 style="margin: 0 0 8px 0; font-family: 'Playfair Display', Georgia, serif; font-size: 13px; font-weight: bold; color: #1F3E29; text-transform: uppercase; letter-spacing: 1px;">Direct Concierge Assistance</h4>
+            <p style="margin: 0; font-size: 12px; color: #555555; line-height: 1.5;">
+              Phone: <strong>+1 (800) 555-CATER</strong> (9:00 AM - 6:00 PM)<br>
+              Email: <a href="mailto:inquiries@evengcatering.com" style="color: #D49A5B; text-decoration: none; font-weight: 600;">inquiries@evengcatering.com</a><br>
+              Website: <a href="${escapeHtml(ctaUrl)}" style="color: #D49A5B; text-decoration: none; font-weight: 600;">www.evengcatering.com</a>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding: 30px 40px; background-color: #1F3E29; color: #A0AEC0;">
+            <p style="margin: 0 0 10px 0; font-weight: 600; color: #D49A5B;">EVENG CATERING INC.</p>
+            <p style="margin: 0 0 15px 0;">90210 Gourmet Row, Suite A, Beverly Hills, CA 90210</p>
+            <p style="margin: 0;">&copy; ${new Date().getFullYear()} Eveng Catering. All Rights Reserved.</p>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>`;
+}
+
+async function safeSendMail(to, subject, html, formType) {
+  try {
+    const transporter = getTransporter();
+    const from = process.env.SMTP_FROM || '"Eveng Catering Services" <no-reply@evengcatering.com>';
+    const cleanTo = to.replace(/[\r\n]/g, '').trim();
+    const cleanSubject = subject.replace(/[\r\n]/g, '').trim();
+
+    const info = await transporter.sendMail({ from, to: cleanTo, subject: cleanSubject, html });
+
+    if (transporter.options && transporter.options.streamTransport) {
+      console.log(`[EMAIL SIMULATION] Subject: "${cleanSubject}"`);
+      console.log(`[EMAIL SIMULATION] Sent to: ${cleanTo}`);
+    }
+
+    console.log(`[Email] Confirmation sent to ${cleanTo} for [${formType}]`);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error(`[Email] Failed for ${to} [${formType}]:`, error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function sendContactConfirmation(data) {
+  const subject = 'Thank You for Contacting Us!';
+  const mainMessage = 'We have successfully received your inquiry request. Our premium kitchen designers and event planning team are already analyzing your message. We look forward to translating your event goals into a magnificent culinary experience.';
+  const summaryFields = [{ label: 'Name', value: data.name }, { label: 'Email', value: data.email }];
+  if (data.phone) summaryFields.push({ label: 'Phone Number', value: data.phone });
+  if (data.eventDate) summaryFields.push({ label: 'Target Event Date', value: data.eventDate });
+  if (data.guests) summaryFields.push({ label: 'Guest Count', value: String(data.guests) });
+  if (data.message) summaryFields.push({ label: 'Inquiry/Message', value: data.message });
+  const html = generateHtmlTemplate({
+    customerName: data.name, subject, mainTitle: 'Thank you for contacting us', mainMessage, summaryFields,
+    nextSteps: ['Our catering planners will review your request within 2 business hours.', 'Sarah, our coordinating event manager, will call you to clarify dietary needs and guest profiles.', 'We will outline customized traditional & fusion menus matching your scale.', 'We will finalize event logistics, banquet layouts, and schedule a private food tasting.']
+  });
+  return safeSendMail(data.email, subject, html, 'Contact Form');
+}
+
+export async function sendBookingConfirmation(data) {
+  const subject = "We've Received Your Catering Inquiry";
+  const mainMessage = 'Thank you for your catering booking request. Our team has received your date details and event hold requirements. Sarah, our coordinating banquet manager, will check the slot availability and finalize your custom package details shortly.';
+  const summaryFields = [{ label: 'Name', value: data.name }, { label: 'Email', value: data.email }, { label: 'Selected Date', value: data.date }];
+  if (data.notes) summaryFields.push({ label: 'Special Notes', value: data.notes });
+  const html = generateHtmlTemplate({
+    customerName: data.name, subject, mainTitle: 'Thank you for your catering inquiry', mainMessage, summaryFields,
+    nextSteps: ['We will verify schedule openings for your requested date in our calendar.', 'A catering representative will reach out to outline culinary themes and finalize guests ratio.', 'We will schedule an exclusive tasting session at our gourmet kitchen.', 'We will lock in the pre-hold once a formal deposit is authorized.']
+  });
+  return safeSendMail(data.email, subject, html, 'Booking Form');
+}
+
+export async function sendOrderConfirmation(data) {
+  const subject = 'Thank You! Your Request Has Been Received';
+  const mainMessage = 'Thank you for submitting your custom catering order request. We are thrilled to handle your gourmet preparation. Our chefs will review the kitchen capacity for your event date and get back to you with invoice details.';
+  const summaryFields = [{ label: 'Customer Name', value: data.name }, { label: 'Email', value: data.email }, { label: 'Selected Service/Layout', value: data.serviceName }];
+  if (data.phone) summaryFields.push({ label: 'Mobile Number', value: data.phone });
+  if (data.address) summaryFields.push({ label: 'Delivery/Venue Address', value: data.address });
+  if (data.orderItems) summaryFields.push({ label: 'Catering Details', value: data.orderItems });
+  if (data.total) summaryFields.push({ label: 'Estimated Invoice', value: `₹${data.total}` });
+  const html = generateHtmlTemplate({
+    customerName: data.name, subject, mainTitle: 'Catering Order Request Received', mainMessage, summaryFields,
+    nextSteps: ['Our Master Chefs will verify standard ingredient prep pipelines for your selection.', 'An invoice coordinator will call you to authorize payment options.', 'Your live food counters or service staff staffing assignments will be confirmed.', 'A fresh, hot gourmet delivery plan or silver-service setup timeline will be locked in.']
+  });
+  return safeSendMail(data.email, subject, html, 'Order Form');
+}
+
+export async function sendChatbotBookingConfirmation(data) {
+  const subject = "Thanks for Your Catering Request";
+  const mainMessage = 'Thank you for utilizing our AI Culinary Concierge. We have successfully registered your customized catering details. Our gourmet kitchen managers and menu planners have received your dynamic preferences and will prepare a tailored proposal package for you.';
+  const summaryFields = [
+    { label: 'Customer Name', value: data.name },
+    { label: 'Email Address', value: data.email },
+    { label: 'Mobile Number', value: data.mobile },
+    { label: 'Event Type', value: data.eventType },
+    { label: 'Target Event Date', value: data.eventDate },
+    { label: 'Guest Count', value: String(data.guests) },
+    { label: 'Preferred Cuisine', value: data.preferredCuisine },
+    { label: 'Catering Budget', value: `₹${data.budget}` },
+    { label: 'Venue Address', value: `${data.venueAddress}, ${data.city}` }
+  ];
+  if (data.specialRequirements) summaryFields.push({ label: 'Dietary / Special Requirements', value: data.specialRequirements });
+  const html = generateHtmlTemplate({
+    customerName: data.name, subject, mainTitle: 'Thank you for using our AI Catering Assistant', mainMessage, summaryFields,
+    nextSteps: ['Our culinary team will review the cuisine, portion weights, and layout options you shared.', 'Sarah, our coordinating event coordinator, will verify logistics for your venue location.', 'A custom menu proposal matching your specific budget and dietary rules will be designed.', 'We will coordinate a final phone consultation or schedule a private kitchen visit.']
+  });
+  return safeSendMail(data.email, subject, html, 'Chatbot Booking');
+}
+
+export async function sendProductInquiryConfirmation(data) {
+  const subject = "We've Received Your Custom Inquiry";
+  const mainMessage = 'Thank you for inquiring about our signature menu items and live counters. We have received your query, and our kitchen team will provide detailed ingredient, customization, and allergen information shortly.';
+  const summaryFields = [{ label: 'Client Name', value: data.name }, { label: 'Email Address', value: data.email }, { label: 'Dishes/Topic', value: data.productName }, { label: 'Message Notes', value: data.message }];
+  if (data.phone) summaryFields.push({ label: 'Phone Number', value: data.phone });
+  const html = generateHtmlTemplate({
+    customerName: data.name, subject, mainTitle: 'Menu Customization Inquiry Received', mainMessage, summaryFields,
+    nextSteps: ['Our kitchen coordinators will review spice limits and Jain/Vegetarian rules for these dishes.', 'We will check seasonal availability of special ingredients.', 'We will outline customized live-station configurations for your event theme.']
+  });
+  return safeSendMail(data.email, subject, html, 'Product Inquiry');
+}
+
+export async function sendQuoteRequestConfirmation(data) {
+  const subject = 'Your Custom Catering Quote Request Is Received';
+  const mainMessage = 'Thank you for requesting a customized catering proposal quote from Eveng Catering. Our gourmet planning representatives are checking wait-staff layouts and service estimates for your gathering.';
+  const summaryFields = [{ label: 'Client Name', value: data.name }, { label: 'Email Address', value: data.email }, { label: 'Notes/Briefing', value: data.message }];
+  if (data.phone) summaryFields.push({ label: 'Mobile Phone', value: data.phone });
+  if (data.eventType) summaryFields.push({ label: 'Event Category', value: data.eventType });
+  if (data.guests) summaryFields.push({ label: 'Guest Count', value: String(data.guests) });
+  const html = generateHtmlTemplate({
+    customerName: data.name, subject, mainTitle: 'Bespoke Quote Proposal Initialized', mainMessage, summaryFields,
+    nextSteps: ['We will evaluate direct wait-staff, mixologists, and layout costs for your volume.', 'We will prepare an elegant, itemized pricing breakdown for food and rentals.', 'We will call you to optimize menu course sequences and adjust price estimates.']
+  });
+  return safeSendMail(data.email, subject, html, 'Quote Request');
+}
+
+export async function sendNewsletterConfirmation(email) {
+  const subject = 'Welcome to Eveng Catering Culinary Inspiration!';
+  const mainMessage = 'Thank you for joining the Eveng Catering exclusive newsletter network! You are now locked in to receive our monthly gourmet inspirations, seasonal recipe outlines curated by our master chefs, professional banqueting layout tips, and early notifications about tasting sessions.';
+  const html = generateHtmlTemplate({
+    customerName: 'Gourmet Enthusiast', subject, mainTitle: 'Gourmet newsletter subscription active', mainMessage,
+    summaryFields: [{ label: 'Subscriber Email', value: email }],
+    nextSteps: ['Keep an eye out for our monthly newsletter issue detailing seasonal menu shifts.', 'Receive exclusive early notifications of private chef tasting events.', 'Gain access to special private discount vouchers for your future catering reservations.']
+  });
+  return safeSendMail(email, subject, html, 'Newsletter Signup');
+}
+
+export async function sendAdminNotification(formType, data) {
+  const adminEmail = process.env.ADMIN_EMAIL;
+  if (!adminEmail) return { success: true, bypassed: true };
+
+  try {
+    const transporter = getTransporter();
+    const from = process.env.SMTP_FROM || '"Eveng Catering Services" <no-reply@evengcatering.com>';
+    const subject = `[Admin Notification] New submission on ${formType}`;
+    const tableRows = Object.entries(data)
+      .map(([key, val]) => `
+      <tr>
+        <td style="padding: 6px 12px; font-weight: bold; border-bottom: 1px solid #ECE7DE; width: 140px; font-size: 12px; color: #1F3E29;">${key}</td>
+        <td style="padding: 6px 12px; border-bottom: 1px solid #ECE7DE; font-size: 12px; color: #1A1A1A;">${typeof val === 'object' ? JSON.stringify(val) : String(val)}</td>
+      </tr>`)
+      .join('');
+    const html = `<!DOCTYPE html><html><body style="font-family: Arial, sans-serif; background-color: #FDFBF7; padding: 25px; color: #1A1A1A;"><div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #EAE5DB; border-radius: 12px; overflow: hidden; padding: 25px;"><h2 style="color: #1F3E29; border-bottom: 2px solid #D49A5B; padding-bottom: 10px; margin-top: 0;">New Form Submission Alerts</h2><p style="font-size: 13px;">A customer has submitted details on the <strong>${formType}</strong> of the website.</p><table style="width: 100%; border-collapse: collapse; margin: 20px 0; background-color: #F7F4EE;">${tableRows}</table><p style="font-size: 11px; color: #555555;">This is an automated system dispatch. Eveng Catering Back-End Control Panel.</p></div></body></html>`;
+    await transporter.sendMail({ from, to: adminEmail.replace(/[\r\n]/g, '').trim(), subject: subject.replace(/[\r\n]/g, '').trim(), html });
+    console.log(`[Email] Admin notice sent to ${adminEmail}`);
+    return { success: true };
+  } catch (error) {
+    console.error('[Email] Admin notification failed:', error);
+    return { success: false, error: error.message };
+  }
+}
