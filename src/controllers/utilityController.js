@@ -26,9 +26,18 @@ export async function submitContactInquiry(req, res) {
       });
     }
 
+    const contactDetails = [
+      `Name: ${name}`,
+      `Email: ${email}`,
+      phone ? `Phone: ${phone}` : '',
+      eventDate ? `Date: ${eventDate}` : '',
+      guests ? `Guests: ${guests}` : '',
+      `Message: "${(message || '').slice(0, 80)}..."`
+    ].filter(Boolean).join(' | ');
+
     createNotificationHelper({
       title: '📩 New Contact Inquiry',
-      message: `New contact inquiry received from ${name}. Message: "${(message || '').slice(0, 60)}..."`,
+      message: contactDetails,
       type: 'Contact',
       icon: 'Mail',
       priority: 'Medium',

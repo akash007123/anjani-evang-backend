@@ -20,27 +20,8 @@ export let inMemoryNotifications = [
     actionUrl: '/admin/bookings',
     createdBy: 'Booking Form',
     isDeleted: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 12).toISOString(), // 12 mins ago
+    createdAt: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
     updatedAt: new Date(Date.now() - 1000 * 60 * 12).toISOString()
-  },
-  {
-    _id: 'notif-102',
-    id: 'notif-102',
-    title: '📩 New Contact Inquiry',
-    message: 'Priya Patel sent an inquiry regarding corporate gala lunch platters.',
-    type: 'Contact',
-    icon: 'Mail',
-    priority: 'Medium',
-    recipientRoles: ['Super Admin', 'Admin', 'Manager'],
-    relatedModule: 'Contact',
-    relatedRecordId: 'cnt-201',
-    readStatus: false,
-    readBy: [],
-    actionUrl: '/admin/contacts',
-    createdBy: 'Contact Form',
-    isDeleted: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 45).toISOString(), // 45 mins ago
-    updatedAt: new Date(Date.now() - 1000 * 60 * 45).toISOString()
   },
   {
     _id: 'notif-103',
@@ -58,7 +39,7 @@ export let inMemoryNotifications = [
     actionUrl: '/admin/bookings',
     createdBy: 'AI Concierge',
     isDeleted: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 120).toISOString(), // 2 hours ago
+    createdAt: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
     updatedAt: new Date(Date.now() - 1000 * 60 * 120).toISOString()
   },
   {
@@ -77,7 +58,7 @@ export let inMemoryNotifications = [
     actionUrl: '/admin/orders',
     createdBy: 'Checkout',
     isDeleted: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(), // 5 hours ago
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
     updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString()
   },
   {
@@ -96,10 +77,16 @@ export let inMemoryNotifications = [
     actionUrl: '/admin/newsletter',
     createdBy: 'Website Footer',
     isDeleted: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), // 1 day ago
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
     updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString()
   }
 ];
+
+let _notifEmitter = null;
+
+export function setNotificationEmitter(fn) {
+  _notifEmitter = fn;
+}
 
 /**
  * Reusable helper to dispatch and persist a new notification across the system
@@ -148,6 +135,12 @@ export async function createNotificationHelper({
 
   // Prepend to in-memory list so instant polling returns it immediately
   inMemoryNotifications.unshift(notifObj);
+
+  // Emit real-time via Socket.IO if emitter is registered
+  if (_notifEmitter) {
+    _notifEmitter(notifObj);
+  }
+
   console.log(`🔔 [Notification System] New ${type} Notification Created: "${title}"`);
   return notifObj;
 }

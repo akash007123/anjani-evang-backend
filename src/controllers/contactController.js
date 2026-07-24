@@ -41,9 +41,19 @@ export const submitContact = async (req, res, next) => {
       console.error('Contact acknowledgment email error:', err);
     });
 
+    const contactDetails = [
+      `Name: ${contact.name || 'Customer'}`,
+      `Email: ${contact.email || 'N/A'}`,
+      contact.phone ? `Phone: ${contact.phone}` : '',
+      contact.eventType ? `Event: ${contact.eventType}` : '',
+      contact.guestCount ? `Guests: ${contact.guestCount}` : '',
+      contact.eventDate ? `Date: ${contact.eventDate}` : '',
+      `Message: "${(contact.message || '').slice(0, 80)}..."`
+    ].filter(Boolean).join(' | ');
+
     createNotificationHelper({
       title: '📩 New Contact Inquiry',
-      message: `New contact inquiry received from ${contact.name || 'Customer'}. Message: "${(contact.message || '').slice(0, 60)}..."`,
+      message: contactDetails,
       type: 'Contact',
       icon: 'Mail',
       priority: 'Medium',
@@ -105,6 +115,21 @@ export const updateContactStatus = async (req, res, next) => {
     if (!contact) {
       return next(new ApiError(404, 'Contact inquiry record not found'));
     }
+
+    const statusPriorityMap = { reviewed: 'Low', responded: 'High', contacted: 'High', resolved: 'Medium', archived: 'Low' };
+    const adminName = req.user?.email || req.user?.name || 'Admin';
+
+    createNotificationHelper({
+      title: '📋 Contact Status Updated',
+      message: `${contact.name || 'Customer'}'s inquiry (${contact._id}) marked as "${status}" by ${adminName}.`,
+      type: 'Contact',
+      icon: 'Mail',
+      priority: statusPriorityMap[status] || 'Medium',
+      relatedModule: 'Contact',
+      relatedRecordId: contact._id,
+      actionUrl: '/admin/contacts',
+      createdBy: adminName
+    }).catch(err => console.error('Status change notification error:', err));
 
     return res.status(200).json(new ApiResponse(200, contact, 'Contact status updated'));
   } catch (error) {
