@@ -8,6 +8,7 @@ const blogPostSchema = new mongoose.Schema({
   featuredImage: { type: String, default: '' },
   galleryImages: [{ type: String }],
   author: { type: String, default: 'Eveng Culinary Team' },
+  authorAvatar: { type: String, default: '' },
   category: { type: String, default: 'Catering Trends' },
   tags: [{ type: String }],
   readingTime: { type: String, default: '5 min read' },
