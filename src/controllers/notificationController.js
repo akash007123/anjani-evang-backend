@@ -2,9 +2,7 @@ import { Notification } from '../models/Notification.js';
 import { ApiResponse } from '../utils/apiResponse.js';
 import { ApiError } from '../utils/apiError.js';
 import {
-  createNotificationHelper,
-  getInMemoryNotificationsFiltered,
-  inMemoryNotifications
+  createNotificationHelper
 } from '../utils/notificationService.js';
 
 /**
@@ -24,73 +22,54 @@ export const getNotifications = async (req, res, next) => {
       limit = 10
     } = req.query;
 
-    let mongoData = null;
-    try {
-      const query = { isDeleted: { $ne: true } };
+    const query = { isDeleted: { $ne: true } };
 
-      if (search) {
-        query.$or = [
-          { title: { $regex: search, $options: 'i' } },
-          { message: { $regex: search, $options: 'i' } },
-          { type: { $regex: search, $options: 'i' } },
-          { relatedRecordId: { $regex: search, $options: 'i' } }
-        ];
-      }
-
-      if (type) query.type = new RegExp(`^${type}$`, 'i');
-      if (priority) query.priority = new RegExp(`^${priority}$`, 'i');
-      if (readStatus !== undefined && readStatus !== '') {
-        query.readStatus = String(readStatus) === 'true';
-      }
-
-      if (startDate || endDate) {
-        query.createdAt = {};
-        if (startDate) query.createdAt.$gte = new Date(startDate);
-        if (endDate) {
-          const end = new Date(endDate);
-          end.setHours(23, 59, 59, 999);
-          query.createdAt.$lte = end;
-        }
-      }
-
-      let sortOptions = { createdAt: -1 };
-      if (sortBy === 'oldest') sortOptions = { createdAt: 1 };
-      if (sortBy === 'type') sortOptions = { type: 1, createdAt: -1 };
-
-      const pageNum = Number(page) || 1;
-      const limitNum = Number(limit) || 10;
-      const skip = (pageNum - 1) * limitNum;
-
-      const [items, total, unreadCount] = await Promise.all([
-        Notification.find(query).sort(sortOptions).skip(skip).limit(limitNum).lean(),
-        Notification.countDocuments(query),
-        Notification.countDocuments({ isDeleted: { $ne: true }, readStatus: false })
-      ]);
-
-      if (items && items.length > 0) {
-        mongoData = {
-          notifications: items,
-          total,
-          page: pageNum,
-          totalPages: Math.ceil(total / limitNum) || 1,
-          unreadCount
-        };
-      }
-    } catch (e) {
-      // Fallback to in-memory
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { message: { $regex: search, $options: 'i' } },
+        { type: { $regex: search, $options: 'i' } },
+        { relatedRecordId: { $regex: search, $options: 'i' } }
+      ];
     }
 
-    const response = mongoData || getInMemoryNotificationsFiltered({
-      search,
-      type,
-      priority,
-      readStatus,
-      startDate,
-      endDate,
-      sortBy,
-      page,
-      limit
-    });
+    if (type) query.type = new RegExp(`^${type}$`, 'i');
+    if (priority) query.priority = new RegExp(`^${priority}$`, 'i');
+    if (readStatus !== undefined && readStatus !== '') {
+      query.readStatus = String(readStatus) === 'true';
+    }
+
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) query.createdAt.$gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        query.createdAt.$lte = end;
+      }
+    }
+
+    let sortOptions = { createdAt: -1 };
+    if (sortBy === 'oldest') sortOptions = { createdAt: 1 };
+    if (sortBy === 'type') sortOptions = { type: 1, createdAt: -1 };
+
+    const pageNum = Number(page) || 1;
+    const limitNum = Number(limit) || 10;
+    const skip = (pageNum - 1) * limitNum;
+
+    const [items, total, unreadCount] = await Promise.all([
+      Notification.find(query).sort(sortOptions).skip(skip).limit(limitNum).lean(),
+      Notification.countDocuments(query),
+      Notification.countDocuments({ isDeleted: { $ne: true }, readStatus: false })
+    ]);
+
+    const response = {
+      notifications: items,
+      total,
+      page: pageNum,
+      totalPages: Math.ceil(total / limitNum) || 1,
+      unreadCount
+    };
 
     return res.status(200).json(new ApiResponse(200, response, 'Notifications retrieved successfully'));
   } catch (error) {
@@ -103,13 +82,7 @@ export const getNotifications = async (req, res, next) => {
  */
 export const getUnreadCount = async (req, res, next) => {
   try {
-    let unreadCount = 0;
-    try {
-      unreadCount = await Notification.countDocuments({ isDeleted: { $ne: true }, readStatus: false });
-    } catch (e) {
-      unreadCount = inMemoryNotifications.filter(n => !n.isDeleted && !n.readStatus).length;
-    }
-
+    const unreadCount = await Notification.countDocuments({ isDeleted: { $ne: true }, readStatus: false });
     return res.status(200).json(new ApiResponse(200, { unreadCount }, 'Unread count retrieved'));
   } catch (error) {
     next(error);
@@ -124,34 +97,20 @@ export const markAsRead = async (req, res, next) => {
     const { id } = req.params;
     const userRole = req.user?.role || 'Admin';
 
-    let updated = null;
-    try {
-      updated = await Notification.findByIdAndUpdate(
-        id,
-        {
-          readStatus: true,
-          $addToSet: { readBy: userRole }
-        },
-        { new: true }
-      ).lean();
-    } catch (e) {
-      // Fallback
-    }
-
-    const index = inMemoryNotifications.findIndex(n => n._id === id || n.id === id);
-    if (index !== -1) {
-      inMemoryNotifications[index].readStatus = true;
-      if (!inMemoryNotifications[index].readBy.includes(userRole)) {
-        inMemoryNotifications[index].readBy.push(userRole);
-      }
-      updated = inMemoryNotifications[index];
-    }
+    const updated = await Notification.findByIdAndUpdate(
+      id,
+      {
+        readStatus: true,
+        $addToSet: { readBy: userRole }
+      },
+      { new: true }
+    ).lean();
 
     if (!updated) {
       return res.status(404).json(new ApiResponse(404, null, 'Notification not found'));
     }
 
-    const unreadCount = inMemoryNotifications.filter(n => !n.isDeleted && !n.readStatus).length;
+    const unreadCount = await Notification.countDocuments({ isDeleted: { $ne: true }, readStatus: false });
 
     return res.status(200).json(new ApiResponse(200, { notification: updated, unreadCount }, 'Notification marked as read'));
   } catch (error) {
@@ -166,24 +125,13 @@ export const markAllAsRead = async (req, res, next) => {
   try {
     const userRole = req.user?.role || 'Admin';
 
-    try {
-      await Notification.updateMany(
-        { isDeleted: { $ne: true }, readStatus: false },
-        {
-          readStatus: true,
-          $addToSet: { readBy: userRole }
-        }
-      );
-    } catch (e) {
-      // Fallback
-    }
-
-    inMemoryNotifications.forEach(n => {
-      n.readStatus = true;
-      if (!n.readBy.includes(userRole)) {
-        n.readBy.push(userRole);
+    await Notification.updateMany(
+      { isDeleted: { $ne: true }, readStatus: false },
+      {
+        readStatus: true,
+        $addToSet: { readBy: userRole }
       }
-    });
+    );
 
     return res.status(200).json(new ApiResponse(200, { unreadCount: 0 }, 'All notifications marked as read'));
   } catch (error) {
@@ -198,18 +146,9 @@ export const deleteNotification = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    try {
-      await Notification.findByIdAndUpdate(id, { isDeleted: true });
-    } catch (e) {
-      // Fallback
-    }
+    await Notification.findByIdAndUpdate(id, { isDeleted: true });
 
-    const index = inMemoryNotifications.findIndex(n => n._id === id || n.id === id);
-    if (index !== -1) {
-      inMemoryNotifications[index].isDeleted = true;
-    }
-
-    const unreadCount = inMemoryNotifications.filter(n => !n.isDeleted && !n.readStatus).length;
+    const unreadCount = await Notification.countDocuments({ isDeleted: { $ne: true }, readStatus: false });
 
     return res.status(200).json(new ApiResponse(200, { id, unreadCount }, 'Notification deleted successfully'));
   } catch (error) {
