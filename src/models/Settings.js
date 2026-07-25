@@ -8,7 +8,8 @@ const settingsSchema = new mongoose.Schema({
   taxRate: { type: Number, default: 8.5 },
   bookingDepositPercentage: { type: Number, default: 25 },
   notificationsEnabled: { type: Boolean, default: true },
-  autoReplyEnabled: { type: Boolean, default: true }
+  autoReplyEnabled: { type: Boolean, default: true },
+  commentModeration: { type: Boolean, default: true }
 }, { timestamps: true });
 
 export const Settings = mongoose.models.Settings || mongoose.model('Settings', settingsSchema);

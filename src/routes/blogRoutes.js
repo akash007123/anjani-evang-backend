@@ -6,6 +6,10 @@ import {
   updateBlog, 
   deleteBlog 
 } from '../controllers/blogController.js';
+import {
+  getBlogComments,
+  createComment
+} from '../controllers/commentController.js';
 import { protect } from '../middlewares/authMiddleware.js';
 import { authorize } from '../middlewares/roleMiddleware.js';
 
@@ -16,5 +20,8 @@ router.get('/:slug', getBlogBySlug);
 router.post('/', protect, authorize('Super Admin', 'Admin'), createBlog);
 router.put('/:id', protect, authorize('Super Admin', 'Admin'), updateBlog);
 router.delete('/:id', protect, authorize('Super Admin', 'Admin'), deleteBlog);
+
+router.get('/:blogId/comments', getBlogComments);
+router.post('/:blogId/comments', createComment);
 
 export default router;
