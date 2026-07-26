@@ -17,7 +17,7 @@ const inMemoryUsers = new Map();
     mobile: '+1 (800) 555-2283',
     password: await hashPassword('Admin123!'),
     role: ROLES.SUPER_ADMIN,
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+    profilePicture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
     verified: true,
     permissions: ['all']
   };
@@ -82,7 +82,7 @@ export const register = async (req, res, next) => {
         email: newUser.email,
         mobile: newUser.mobile,
         role: newUser.role,
-        avatar: newUser.avatar || ''
+        profilePicture: newUser.profilePicture || ''
       }
     }, 'User registered successfully'));
   } catch (error) {
@@ -134,7 +134,7 @@ export const login = async (req, res, next) => {
         email: user.email,
         mobile: user.mobile,
         role: user.role,
-        avatar: user.avatar || ''
+        profilePicture: user.profilePicture || ''
       }
     }, 'Authentication successful'));
   } catch (error) {
@@ -159,7 +159,7 @@ export const getMe = async (req, res, next) => {
       email: user.email,
       mobile: user.mobile,
       role: user.role,
-      avatar: user.avatar || ''
+      profilePicture: user.profilePicture || ''
     }, 'User profile retrieved'));
   } catch (error) {
     next(error);
