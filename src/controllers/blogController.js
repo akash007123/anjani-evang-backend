@@ -79,6 +79,19 @@ export const getBlogs = async (req, res, next) => {
   }
 };
 
+export const getBlogById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const blog = await BlogPost.findById(id).lean();
+    if (!blog) {
+      return next(new ApiError(404, 'Blog post not found'));
+    }
+    return res.status(200).json(new ApiResponse(200, blog, 'Blog post fetched successfully'));
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getBlogBySlug = async (req, res, next) => {
   try {
     const { slug } = req.params;
@@ -148,15 +161,33 @@ export const updateBlog = async (req, res, next) => {
       return next(new ApiError(404, 'Blog not found'));
     }
 
-    if (body.slug && body.slug !== existing.slug) {
-      body.slug = await resolveUniqueSlug(body.slug, id);
+    let slug;
+    if (body.slug) {
+      slug = await resolveUniqueSlug(slugify(body.slug), id);
+    } else {
+      const titleSlug = slugify(body.title || existing.title);
+      slug = await resolveUniqueSlug(titleSlug, id);
     }
 
-    if (body.tags && typeof body.tags === 'string') {
-      body.tags = body.tags.split(',').map(t => t.trim());
-    }
-
-    const updated = await BlogPost.findByIdAndUpdate(id, body, { new: true, runValidators: true }).lean();
+    const updated = await BlogPost.findByIdAndUpdate(id, {
+      title: body.title !== undefined && body.title !== '' ? body.title : existing.title,
+      slug,
+      excerpt: body.excerpt !== undefined && body.excerpt !== '' ? body.excerpt : existing.excerpt,
+      content: body.content !== undefined && body.content !== '' ? body.content : existing.content,
+      featuredImage: body.featuredImage !== undefined ? body.featuredImage : (body.image || existing.featuredImage),
+      galleryImages: body.galleryImages !== undefined ? body.galleryImages : existing.galleryImages,
+      author: body.author !== undefined ? body.author : existing.author,
+      authorAvatar: body.authorAvatar !== undefined ? body.authorAvatar : existing.authorAvatar,
+      category: body.category !== undefined ? body.category : existing.category,
+      tags: body.tags ? (Array.isArray(body.tags) ? body.tags : body.tags.split(',').map(t => t.trim())) : existing.tags,
+      readingTime: body.readingTime !== undefined ? body.readingTime : existing.readingTime,
+      publishDate: body.publishDate || existing.publishDate,
+      seoTitle: body.seoTitle !== undefined ? body.seoTitle : existing.seoTitle,
+      seoDescription: body.seoDescription !== undefined ? body.seoDescription : existing.seoDescription,
+      metaKeywords: body.metaKeywords !== undefined ? body.metaKeywords : existing.metaKeywords,
+      featured: body.featured !== undefined ? Boolean(body.featured) : existing.featured,
+      status: body.status || existing.status
+    }, { new: true, runValidators: true }).lean();
 
     return res.status(200).json(new ApiResponse(200, updated, 'Blog updated successfully'));
   } catch (error) {

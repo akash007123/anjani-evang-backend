@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { 
   getBlogs, 
+  getBlogById,
   getBlogBySlug, 
   createBlog, 
   updateBlog, 
@@ -16,6 +17,7 @@ import { authorize } from '../middlewares/roleMiddleware.js';
 const router = Router();
 
 router.get('/', getBlogs);
+router.get('/id/:id', getBlogById);
 router.get('/:slug', getBlogBySlug);
 router.post('/', protect, authorize('Super Admin', 'Admin'), createBlog);
 router.put('/:id', protect, authorize('Super Admin', 'Admin'), updateBlog);

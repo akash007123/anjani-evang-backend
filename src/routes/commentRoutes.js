@@ -2,6 +2,8 @@ import { Router } from 'express';
 import {
   getAllComments,
   getCommentById,
+  getCommentReplies,
+  createReply,
   approveComment,
   rejectComment,
   deleteComment
@@ -13,6 +15,8 @@ const router = Router();
 
 router.get('/', protect, authorize('Super Admin', 'Admin'), getAllComments);
 router.get('/:id', protect, authorize('Super Admin', 'Admin'), getCommentById);
+router.get('/:commentId/replies', getCommentReplies);
+router.post('/:commentId/replies', createReply);
 router.patch('/:id/approve', protect, authorize('Super Admin', 'Admin'), approveComment);
 router.patch('/:id/reject', protect, authorize('Super Admin', 'Admin'), rejectComment);
 router.delete('/:id', protect, authorize('Super Admin', 'Admin'), deleteComment);
