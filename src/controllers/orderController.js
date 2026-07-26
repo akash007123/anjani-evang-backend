@@ -85,6 +85,22 @@ export const getAllOrders = async (req, res, next) => {
   }
 };
 
+export const getOrderById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    let order = await Order.findById(id).catch(() => null);
+    if (!order) {
+      order = mockOrders.find(o => o._id === id || o.orderNumber === id) || null;
+    }
+    if (!order) {
+      return next(new ApiError(404, 'Order not found'));
+    }
+    return res.status(200).json(new ApiResponse(200, order, 'Order retrieved successfully'));
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const deleteOrder = async (req, res, next) => {
   try {
     const { id } = req.params;
