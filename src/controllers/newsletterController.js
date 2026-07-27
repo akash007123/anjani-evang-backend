@@ -1,85 +1,36 @@
 import { Newsletter } from '../models/Newsletter.js';
 import { ApiResponse } from '../utils/apiResponse.js';
+import { ApiError } from '../utils/apiError.js';
 import { createNotificationHelper } from '../utils/notificationService.js';
-
-let inMemorySubscribers = [
-  {
-    _id: 'sub-1',
-    id: 'sub-1',
-    email: 'samantha.t@gmail.com',
-    subscribedAt: new Date('2026-07-15').toISOString(),
-    status: 'Active',
-    source: 'Website Footer'
-  },
-  {
-    _id: 'sub-2',
-    id: 'sub-2',
-    email: 'mbrody@oracle.com',
-    subscribedAt: new Date('2026-07-16').toISOString(),
-    status: 'Active',
-    source: 'Quote Popup'
-  },
-  {
-    _id: 'sub-3',
-    id: 'sub-3',
-    email: 'elena.ros@yahoo.com',
-    subscribedAt: new Date('2026-07-18').toISOString(),
-    status: 'Active',
-    source: 'Menu Download'
-  },
-  {
-    _id: 'sub-4',
-    id: 'sub-4',
-    email: 'rahul.kapoor@techcorp.io',
-    subscribedAt: new Date('2026-07-19').toISOString(),
-    status: 'Inactive',
-    source: 'Website Footer'
-  },
-  {
-    _id: 'sub-5',
-    id: 'sub-5',
-    email: 'priya.sharma@gmail.com',
-    subscribedAt: new Date('2026-07-20').toISOString(),
-    status: 'Active',
-    source: 'Checkout Banner'
-  }
-];
 
 export const getSubscribers = async (req, res, next) => {
   try {
     const { search, status, source, page = 1, limit = 10 } = req.query;
 
-    let items = [];
-    try {
-      items = await Newsletter.find().lean();
-    } catch (e) {
-      items = [];
-    }
-    if (!items || items.length === 0) {
-      items = [...inMemorySubscribers];
-    }
+    const filter = {};
 
     if (search) {
-      const q = String(search).toLowerCase();
-      items = items.filter(s => s.email && s.email.toLowerCase().includes(q));
+      filter.email = { $regex: String(search), $options: 'i' };
     }
+    if (status && status !== 'All') filter.status = status;
+    if (source && source !== 'All') filter.source = source;
 
-    if (status && status !== 'All') {
-      items = items.filter(s => s.status === status);
-    }
+    const pageNum = Math.max(1, parseInt(page) || 1);
+    const limitNum = Math.max(1, parseInt(limit) || 10);
 
-    if (source && source !== 'All') {
-      items = items.filter(s => s.source === source);
-    }
+    const [items, total] = await Promise.all([
+      Newsletter.find(filter)
+        .sort({ createdAt: -1 })
+        .skip((pageNum - 1) * limitNum)
+        .limit(limitNum)
+        .lean(),
+      Newsletter.countDocuments(filter),
+    ]);
 
-    const pageNum = parseInt(page) || 1;
-    const limitNum = parseInt(limit) || 10;
-    const total = items.length;
     const totalPages = Math.ceil(total / limitNum) || 1;
-    const paginatedItems = items.slice((pageNum - 1) * limitNum, pageNum * limitNum);
 
     return res.status(200).json(new ApiResponse(200, {
-      subscribers: paginatedItems,
+      subscribers: items,
       total,
       page: pageNum,
       totalPages
@@ -96,42 +47,31 @@ export const subscribeNewsletter = async (req, res, next) => {
       return res.status(400).json(new ApiResponse(400, null, 'Email is required'));
     }
 
-    const newSub = {
-      _id: `sub-${Date.now()}`,
-      id: `sub-${Date.now()}`,
-      email,
-      subscribedAt: new Date().toISOString(),
-      status: 'Active',
-      source: source || 'Website Footer'
-    };
-
-    try {
-      await Newsletter.create(newSub);
-    } catch (e) {
-      // Fallback
-    }
-
-    const existingIndex = inMemorySubscribers.findIndex(s => s.email.toLowerCase() === email.toLowerCase());
-    if (existingIndex !== -1) {
-      inMemorySubscribers[existingIndex].status = 'Active';
-    } else {
-      inMemorySubscribers.unshift(newSub);
-    }
+    const subscriber = await Newsletter.findOneAndUpdate(
+      { email: email.toLowerCase() },
+      {
+        email: email.toLowerCase(),
+        source: source || 'Website Footer',
+        status: 'Active',
+        subscribedAt: new Date(),
+      },
+      { upsert: true, new: true }
+    ).lean();
 
     // Trigger admin notification asynchronously
     createNotificationHelper({
       title: '✉️ New Newsletter Subscriber',
-      message: `New subscriber joined: ${newSub.email} (${newSub.source || 'Website'}).`,
+      message: `New subscriber joined: ${subscriber.email} (${subscriber.source || 'Website'}).`,
       type: 'Newsletter',
       icon: 'Send',
       priority: 'Low',
       relatedModule: 'Newsletter',
-      relatedRecordId: newSub._id,
+      relatedRecordId: subscriber._id,
       actionUrl: '/admin/newsletter',
       createdBy: 'Newsletter Form'
     }).catch(err => console.error('Newsletter notification creation error:', err));
 
-    return res.status(201).json(new ApiResponse(201, newSub, 'Subscribed successfully'));
+    return res.status(201).json(new ApiResponse(201, subscriber, 'Subscribed successfully'));
   } catch (error) {
     next(error);
   }
@@ -142,21 +82,9 @@ export const updateSubscriberStatus = async (req, res, next) => {
     const { id } = req.params;
     const { status } = req.body;
 
-    let updated = null;
-    try {
-      updated = await Newsletter.findByIdAndUpdate(id, { status }, { new: true }).lean();
-    } catch (e) {
-      updated = null;
-    }
-
-    const index = inMemorySubscribers.findIndex(s => s._id === id || s.id === id);
-    if (index !== -1) {
-      inMemorySubscribers[index].status = status;
-      updated = inMemorySubscribers[index];
-    }
-
+    const updated = await Newsletter.findByIdAndUpdate(id, { status }, { new: true }).lean();
     if (!updated) {
-      return res.status(404).json(new ApiResponse(404, null, 'Subscriber not found'));
+      return next(new ApiError(404, 'Subscriber not found'));
     }
 
     return res.status(200).json(new ApiResponse(200, updated, 'Subscriber status updated'));
@@ -168,12 +96,10 @@ export const updateSubscriberStatus = async (req, res, next) => {
 export const deleteSubscriber = async (req, res, next) => {
   try {
     const { id } = req.params;
-    try {
-      await Newsletter.findByIdAndDelete(id);
-    } catch (e) {
-      // Fallback
+    const deleted = await Newsletter.findByIdAndDelete(id).lean();
+    if (!deleted) {
+      return next(new ApiError(404, 'Subscriber not found'));
     }
-    inMemorySubscribers = inMemorySubscribers.filter(s => s._id !== id && s.id !== id);
 
     return res.status(200).json(new ApiResponse(200, { id }, 'Subscriber deleted successfully'));
   } catch (error) {
@@ -188,15 +114,9 @@ export const bulkDeleteSubscribers = async (req, res, next) => {
       return res.status(400).json(new ApiResponse(400, null, 'ids array is required'));
     }
 
-    try {
-      await Newsletter.deleteMany({ _id: { $in: ids } });
-    } catch (e) {
-      // Fallback
-    }
+    const result = await Newsletter.deleteMany({ _id: { $in: ids } });
 
-    inMemorySubscribers = inMemorySubscribers.filter(s => !ids.includes(s._id) && !ids.includes(s.id));
-
-    return res.status(200).json(new ApiResponse(200, { deletedCount: ids.length }, 'Subscribers deleted successfully'));
+    return res.status(200).json(new ApiResponse(200, { deletedCount: result.deletedCount }, 'Subscribers deleted successfully'));
   } catch (error) {
     next(error);
   }
@@ -204,10 +124,10 @@ export const bulkDeleteSubscribers = async (req, res, next) => {
 
 export const exportSubscribersCSV = async (req, res, next) => {
   try {
-    let items = [...inMemorySubscribers];
+    const items = await Newsletter.find().sort({ createdAt: -1 }).lean();
     let csv = 'Email,Subscription Date,Status,Source\n';
     items.forEach(s => {
-      csv += `"${s.email}","${s.subscribedAt}","${s.status}","${s.source}"\n`;
+      csv += `"${s.email}","${s.subscribedAt || s.createdAt}","${s.status}","${s.source}"\n`;
     });
 
     res.setHeader('Content-Type', 'text/csv');
