@@ -2,6 +2,21 @@ import { BlogPost } from '../models/BlogPost.js';
 import { ApiResponse } from '../utils/apiResponse.js';
 import { ApiError } from '../utils/apiError.js';
 
+function sanitizeTag(raw) {
+  if (typeof raw !== 'string') return '';
+  return raw.trim().replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').slice(0, 50);
+}
+
+function parseTags(input) {
+  if (Array.isArray(input)) {
+    return input.map(sanitizeTag).filter(Boolean);
+  }
+  if (typeof input === 'string') {
+    return input.split(',').map(sanitizeTag).filter(Boolean);
+  }
+  return [];
+}
+
 function slugify(text) {
   return text
     .toString()
@@ -27,7 +42,7 @@ async function resolveUniqueSlug(baseSlug, excludeId) {
 
 export const getBlogs = async (req, res, next) => {
   try {
-    const { search, category, status, featured, sortBy = 'latest', page = 1, limit = 10 } = req.query;
+    const { search, category, tag, status, featured, sortBy = 'latest', page = 1, limit = 10 } = req.query;
 
     const query = {};
 
@@ -37,8 +52,13 @@ export const getBlogs = async (req, res, next) => {
         { title: { $regex: q, $options: 'i' } },
         { author: { $regex: q, $options: 'i' } },
         { excerpt: { $regex: q, $options: 'i' } },
-        { category: { $regex: q, $options: 'i' } }
+        { category: { $regex: q, $options: 'i' } },
+        { tags: { $regex: q, $options: 'i' } }
       ];
+    }
+
+    if (tag) {
+      query.tags = { $regex: String(tag), $options: 'i' };
     }
 
     if (category && category !== 'All') {
@@ -135,7 +155,7 @@ export const createBlog = async (req, res, next) => {
       author: body.author || 'Anjani Culinary Team',
       authorAvatar: body.authorAvatar || '',
       category: body.category || 'General',
-      tags: body.tags ? (Array.isArray(body.tags) ? body.tags : body.tags.split(',').map(t => t.trim())) : [],
+      tags: parseTags(body.tags),
       readingTime: body.readingTime || '5 min read',
       publishDate: body.publishDate || new Date(),
       seoTitle: body.seoTitle || body.title,
@@ -179,7 +199,7 @@ export const updateBlog = async (req, res, next) => {
       author: body.author !== undefined ? body.author : existing.author,
       authorAvatar: body.authorAvatar !== undefined ? body.authorAvatar : existing.authorAvatar,
       category: body.category !== undefined ? body.category : existing.category,
-      tags: body.tags ? (Array.isArray(body.tags) ? body.tags : body.tags.split(',').map(t => t.trim())) : existing.tags,
+      tags: body.tags !== undefined ? parseTags(body.tags) : existing.tags,
       readingTime: body.readingTime !== undefined ? body.readingTime : existing.readingTime,
       publishDate: body.publishDate || existing.publishDate,
       seoTitle: body.seoTitle !== undefined ? body.seoTitle : existing.seoTitle,

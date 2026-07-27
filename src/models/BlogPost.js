@@ -20,4 +20,6 @@ const blogPostSchema = new mongoose.Schema({
   status: { type: String, enum: ['Active', 'Inactive', 'Draft', 'Published'], default: 'Active' }
 }, { timestamps: true });
 
+blogPostSchema.index({ tags: 1 });
+
 export const BlogPost = mongoose.models.BlogPost || mongoose.model('BlogPost', blogPostSchema);
