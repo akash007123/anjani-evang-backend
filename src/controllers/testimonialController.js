@@ -2,22 +2,9 @@ import { Testimonial } from '../models/Testimonial.js';
 import { ApiResponse } from '../utils/apiResponse.js';
 import { ApiError } from '../utils/apiError.js';
 
-const mockTestimonials = [
-  {
-    _id: 't-1',
-    name: 'Eleanor Vance',
-    role: 'Event Host',
-    company: 'Beverly Hills Social Club',
-    rating: 5,
-    comment: 'Eveng Catering rendered our anniversary gala completely flawless. Their live truffle stations and staff professionalism are world-class.',
-    eventType: 'Anniversary Gala'
-  }
-];
-
 export const getTestimonials = async (req, res, next) => {
   try {
-    let list = await Testimonial.find().catch(() => []);
-    if (!list.length) list = mockTestimonials;
+    const list = await Testimonial.find().lean();
     return res.status(200).json(new ApiResponse(200, list, 'Testimonials retrieved'));
   } catch (error) {
     next(error);

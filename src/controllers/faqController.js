@@ -2,25 +2,9 @@ import { FAQ } from '../models/FAQ.js';
 import { ApiResponse } from '../utils/apiResponse.js';
 import { ApiError } from '../utils/apiError.js';
 
-const mockFAQs = [
-  {
-    _id: 'faq-1',
-    question: 'How far in advance should we reserve our event date?',
-    answer: 'We recommend securing your date at least 4 to 8 weeks in advance for large galas or weddings. However, express arrangements can be coordinated within 5 business days subject to availability.',
-    category: 'Bookings'
-  },
-  {
-    _id: 'faq-2',
-    question: 'Do you accommodate complex dietary restrictions and custom menus?',
-    answer: 'Absolutely. Our master chefs customize menus for Vegan, Gluten-Free, Halal, Kosher, Jain, and organic preferences without compromising taste or presentation.',
-    category: 'Menus'
-  }
-];
-
 export const getFAQs = async (req, res, next) => {
   try {
-    let list = await FAQ.find().sort({ order: 1 }).catch(() => []);
-    if (!list.length) list = mockFAQs;
+    const list = await FAQ.find().sort({ order: 1 }).lean();
     return res.status(200).json(new ApiResponse(200, list, 'FAQs retrieved'));
   } catch (error) {
     next(error);

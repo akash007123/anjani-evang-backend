@@ -3,71 +3,22 @@ import { ApiResponse } from '../utils/apiResponse.js';
 import { ApiError } from '../utils/apiError.js';
 import { createNotificationHelper } from '../utils/notificationService.js';
 
-const mockOrders = [
-  {
-    _id: 'ord-301',
-    orderNumber: 'ORD-9021',
-    customerName: 'Victoria Sterling',
-    email: 'victoria@sterlingholdings.com',
-    phone: '+1 (555) 345-6789',
-    items: [
-      { id: 'item-1', title: 'Truffle Glazed Tenderloin Platters', price: 450, quantity: 2 }
-    ],
-    totalAmount: 900,
-    deliveryAddress: '740 Park Ave, Penthouse B, New York',
-    status: 'delivered',
-    paymentStatus: 'Paid',
-    createdAt: new Date()
-  }
-];
-
 export const createOrder = async (req, res, next) => {
   try {
-    const { customerName, email, phone, items, totalAmount, deliveryAddress } = req.body;
-    const orderNum = `ORD-${Math.floor(1000 + Math.random() * 9000)}`;
-
-    let order;
-    try {
-      order = await Order.create({
-        orderNumber: orderNum,
-        customerName,
-        email,
-        phone,
-        items: items || [],
-        totalAmount,
-        deliveryAddress
-      });
-    } catch {
-      order = {
-        _id: `ord-${Date.now()}`,
-        orderNumber: orderNum,
-        customerName,
-        email,
-        phone,
-        items: items || [],
-        totalAmount,
-        deliveryAddress,
-        status: 'pending',
-        paymentStatus: 'Pending',
-        createdAt: new Date()
-      };
-      mockOrders.unshift(order);
-    }
-
-    // Trigger admin notification asynchronously
+    const order = await Order.create(req.body);
     createNotificationHelper({
-      title: '🛒 New Catering Order Received',
-      message: `New order #${order.orderNumber} placed by ${order.customerName || 'Customer'} for $${order.totalAmount || 0}.`,
+      title: 'New Order Placed',
+      message: `Order ${order.orderNumber} placed by ${order.customerName} for ${order.totalAmount ? `$${order.totalAmount}` : ''}`,
       type: 'Order',
       icon: 'ShoppingCart',
-      priority: 'High',
+      priority: 'Medium',
+      recipientRoles: ['Super Admin', 'Admin', 'Manager'],
       relatedModule: 'Order',
-      relatedRecordId: order.orderNumber || order._id,
+      relatedRecordId: order._id.toString(),
       actionUrl: '/admin/orders',
-      createdBy: 'Checkout'
-    }).catch(err => console.error('Order notification creation error:', err));
-
-    return res.status(201).json(new ApiResponse(201, order, 'Order placed successfully. Order #: ' + orderNum));
+      createdBy: 'System'
+    }).catch(() => {});
+    return res.status(201).json(new ApiResponse(201, order, 'Order created successfully'));
   } catch (error) {
     next(error);
   }
@@ -75,11 +26,38 @@ export const createOrder = async (req, res, next) => {
 
 export const getAllOrders = async (req, res, next) => {
   try {
-    let orders = await Order.find().sort({ createdAt: -1 }).catch(() => []);
-    if (!orders.length) {
-      orders = mockOrders;
+    const { search, status, paymentStatus, sortBy = 'latest', page = 1, limit = 10 } = req.query;
+    const query = {};
+
+    if (search) {
+      const q = String(search);
+      query.$or = [
+        { customerName: { $regex: q, $options: 'i' } },
+        { email: { $regex: q, $options: 'i' } },
+        { orderNumber: { $regex: q, $options: 'i' } },
+      ];
     }
-    return res.status(200).json(new ApiResponse(200, orders, 'Orders retrieved successfully'));
+    if (status && status !== 'All') query.status = status;
+    if (paymentStatus) query.paymentStatus = paymentStatus;
+
+    let sortOptions = { createdAt: -1 };
+    if (sortBy === 'oldest') sortOptions = { createdAt: 1 };
+
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 10;
+    const skip = (pageNum - 1) * limitNum;
+
+    const [items, total] = await Promise.all([
+      Order.find(query).sort(sortOptions).skip(skip).limit(limitNum).lean(),
+      Order.countDocuments(query),
+    ]);
+
+    return res.status(200).json(new ApiResponse(200, {
+      orders: items,
+      total,
+      page: pageNum,
+      totalPages: Math.ceil(total / limitNum) || 1,
+    }, 'Orders retrieved successfully'));
   } catch (error) {
     next(error);
   }
@@ -88,26 +66,9 @@ export const getAllOrders = async (req, res, next) => {
 export const getOrderById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    let order = await Order.findById(id).catch(() => null);
-    if (!order) {
-      order = mockOrders.find(o => o._id === id || o.orderNumber === id) || null;
-    }
-    if (!order) {
-      return next(new ApiError(404, 'Order not found'));
-    }
+    const order = await Order.findById(id).lean();
+    if (!order) return next(new ApiError(404, 'Order not found'));
     return res.status(200).json(new ApiResponse(200, order, 'Order retrieved successfully'));
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const deleteOrder = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    await Order.findByIdAndDelete(id).catch(() => null);
-    const idx = mockOrders.findIndex(o => o._id === id || o.orderNumber === id);
-    if (idx !== -1) mockOrders.splice(idx, 1);
-    return res.status(200).json(new ApiResponse(200, null, 'Order deleted successfully'));
   } catch (error) {
     next(error);
   }
@@ -117,22 +78,23 @@ export const updateOrderStatus = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { status, paymentStatus } = req.body;
+    const updateData = {};
+    if (status) updateData.status = status;
+    if (paymentStatus) updateData.paymentStatus = paymentStatus;
+    const updated = await Order.findByIdAndUpdate(id, updateData, { new: true, runValidators: true }).lean();
+    if (!updated) return next(new ApiError(404, 'Order not found'));
+    return res.status(200).json(new ApiResponse(200, updated, 'Order updated successfully'));
+  } catch (error) {
+    next(error);
+  }
+};
 
-    let order = await Order.findByIdAndUpdate(id, { status, paymentStatus }, { new: true }).catch(() => null);
-    if (!order) {
-      const idx = mockOrders.findIndex(o => o._id === id || o.orderNumber === id);
-      if (idx !== -1) {
-        if (status) mockOrders[idx].status = status;
-        if (paymentStatus) mockOrders[idx].paymentStatus = paymentStatus;
-        order = mockOrders[idx];
-      }
-    }
-
-    if (!order) {
-      return next(new ApiError(404, 'Order record not found'));
-    }
-
-    return res.status(200).json(new ApiResponse(200, order, 'Order status updated successfully'));
+export const deleteOrder = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const deleted = await Order.findByIdAndDelete(id);
+    if (!deleted) return next(new ApiError(404, 'Order not found'));
+    return res.status(200).json(new ApiResponse(200, { id }, 'Order deleted successfully'));
   } catch (error) {
     next(error);
   }

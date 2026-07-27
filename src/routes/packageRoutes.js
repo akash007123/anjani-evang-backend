@@ -6,13 +6,14 @@ import {
   updatePackage, 
   deletePackage 
 } from '../controllers/packageController.js';
+import { protect } from '../middlewares/authMiddleware.js';
 
 const router = Router();
 
 router.get('/', getPackages);
 router.get('/:id', getPackageById);
-router.post('/', createPackage);
-router.put('/:id', updatePackage);
-router.delete('/:id', deletePackage);
+router.post('/', protect, createPackage);
+router.put('/:id', protect, updatePackage);
+router.delete('/:id', protect, deletePackage);
 
 export default router;

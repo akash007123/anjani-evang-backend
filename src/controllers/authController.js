@@ -166,6 +166,77 @@ export const getMe = async (req, res, next) => {
   }
 };
 
+export const verifyAccount = async (req, res, next) => {
+  try {
+    const { emailOrMobile } = req.body;
+    if (!emailOrMobile) {
+      return next(new ApiError(400, 'Email or mobile is required.'));
+    }
+
+    let user = await User.findOne({
+      $or: [{ email: emailOrMobile }, { mobile: emailOrMobile }]
+    }).catch(() => null);
+    if (!user) {
+      user = Array.from(inMemoryUsers.values()).find(
+        u => u.email === emailOrMobile || u.mobile === emailOrMobile
+      );
+    }
+    if (!user) {
+      return next(new ApiError(404, 'No account found with that email or mobile.'));
+    }
+
+    return res.status(200).json(new ApiResponse(200, {
+      verified: true,
+      email: user.email
+    }, 'Account verified successfully.'));
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const resetPassword = async (req, res, next) => {
+  try {
+    const { emailOrMobile, newPassword } = req.body;
+    if (!emailOrMobile || !newPassword) {
+      return next(new ApiError(400, 'Email/mobile and new password are required.'));
+    }
+    if (newPassword.length < 8) {
+      return next(new ApiError(400, 'Password must be at least 8 characters.'));
+    }
+
+    const hashed = await hashPassword(newPassword);
+    let updated = false;
+
+    try {
+      const user = await User.findOne({ $or: [{ email: emailOrMobile }, { mobile: emailOrMobile }] });
+      if (user) {
+        user.password = hashed;
+        await user.save();
+        updated = true;
+      }
+    } catch {}
+
+    if (!updated) {
+      const memUser = Array.from(inMemoryUsers.values()).find(
+        u => u.email === emailOrMobile || u.mobile === emailOrMobile
+      );
+      if (memUser) {
+        memUser.password = hashed;
+        inMemoryUsers.set(memUser.email, memUser);
+        updated = true;
+      }
+    }
+
+    if (!updated) {
+      return next(new ApiError(404, 'Account not found.'));
+    }
+
+    return res.status(200).json(new ApiResponse(200, null, 'Password reset successfully.'));
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const logout = async (req, res) => {
   res.clearCookie('token');
   return res.status(200).json(new ApiResponse(200, null, 'Logged out successfully'));

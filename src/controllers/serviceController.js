@@ -2,33 +2,9 @@ import { Service } from '../models/Service.js';
 import { ApiResponse } from '../utils/apiResponse.js';
 import { ApiError } from '../utils/apiError.js';
 
-const mockServices = [
-  {
-    _id: 's-1',
-    title: 'Royal Wedding Banquets',
-    slug: 'royal-wedding-banquets',
-    shortDescription: 'Multi-course luxury wedding feasts tailored for unforgettable celebrations.',
-    pricePerGuest: 145,
-    category: 'Weddings',
-    featured: true,
-    image: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&q=80&w=800'
-  },
-  {
-    _id: 's-2',
-    title: 'Corporate Executive Galas',
-    slug: 'corporate-executive-galas',
-    shortDescription: 'Sophisticated corporate dinings, product launches, and annual summits.',
-    pricePerGuest: 120,
-    category: 'Corporate',
-    featured: true,
-    image: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&q=80&w=800'
-  }
-];
-
 export const getServices = async (req, res, next) => {
   try {
-    let services = await Service.find().catch(() => []);
-    if (!services.length) services = mockServices;
+    const services = await Service.find().lean();
     return res.status(200).json(new ApiResponse(200, services, 'Services retrieved successfully'));
   } catch (error) {
     next(error);
@@ -38,8 +14,7 @@ export const getServices = async (req, res, next) => {
 export const getServiceBySlug = async (req, res, next) => {
   try {
     const { slug } = req.params;
-    let service = await Service.findOne({ slug }).catch(() => null);
-    if (!service) service = mockServices.find(s => s.slug === slug);
+    const service = await Service.findOne({ slug }).lean();
     if (!service) return next(new ApiError(404, 'Service not found'));
     return res.status(200).json(new ApiResponse(200, service, 'Service details retrieved'));
   } catch (error) {

@@ -4,66 +4,23 @@ import { ApiError } from '../utils/apiError.js';
 import { sendContactAckEmail } from '../utils/emailService.js';
 import { createNotificationHelper } from '../utils/notificationService.js';
 
-const mockContacts = [];
-
 export const submitContact = async (req, res, next) => {
   try {
-    const { name, email, phone, eventType, eventDate, guestCount, message } = req.body;
-
-    let contact;
-    try {
-      contact = await Contact.create({
-        name,
-        email,
-        phone,
-        eventType: eventType || 'General Inquiry',
-        eventDate,
-        guestCount: guestCount ? Number(guestCount) : undefined,
-        message
-      });
-    } catch {
-      contact = {
-        _id: `contact-${Date.now()}`,
-        name,
-        email,
-        phone,
-        eventType: eventType || 'General Inquiry',
-        eventDate,
-        guestCount: guestCount ? Number(guestCount) : undefined,
-        message,
-        status: 'new',
-        createdAt: new Date()
-      };
-      mockContacts.unshift(contact);
-    }
-
-    sendContactAckEmail(contact).catch((err) => {
-      console.error('Contact acknowledgment email error:', err);
-    });
-
-    const contactDetails = [
-      `Name: ${contact.name || 'Customer'}`,
-      `Email: ${contact.email || 'N/A'}`,
-      contact.phone ? `Phone: ${contact.phone}` : '',
-      contact.eventType ? `Event: ${contact.eventType}` : '',
-      contact.guestCount ? `Guests: ${contact.guestCount}` : '',
-      contact.eventDate ? `Date: ${contact.eventDate}` : '',
-      `Message: "${(contact.message || '').slice(0, 80)}..."`
-    ].filter(Boolean).join(' | ');
-
+    const contact = await Contact.create(req.body);
+    sendContactAckEmail(contact).catch(() => {});
     createNotificationHelper({
-      title: '📩 New Contact Inquiry',
-      message: contactDetails,
+      title: 'New Contact Inquiry',
+      message: `${contact.name} sent an inquiry${contact.eventType ? ` about ${contact.eventType}` : ''}`,
       type: 'Contact',
-      icon: 'Mail',
+      icon: 'MessageSquare',
       priority: 'Medium',
+      recipientRoles: ['Super Admin', 'Admin', 'Manager'],
       relatedModule: 'Contact',
-      relatedRecordId: contact._id,
+      relatedRecordId: contact._id.toString(),
       actionUrl: '/admin/contacts',
-      createdBy: 'Contact Form'
-    }).catch(err => console.error('Contact notification creation error:', err));
-
-    return res.status(201).json(new ApiResponse(201, contact, 'Contact inquiry submitted successfully! Our team will get in touch shortly.'));
+      createdBy: 'System'
+    }).catch(() => {});
+    return res.status(201).json(new ApiResponse(201, contact, 'Contact submitted successfully'));
   } catch (error) {
     next(error);
   }
@@ -71,11 +28,37 @@ export const submitContact = async (req, res, next) => {
 
 export const getAllContacts = async (req, res, next) => {
   try {
-    let contacts = await Contact.find().sort({ createdAt: -1 }).catch(() => []);
-    if (!contacts.length) {
-      contacts = mockContacts;
+    const { search, status, sortBy = 'latest', page = 1, limit = 10 } = req.query;
+    const query = {};
+
+    if (search) {
+      const q = String(search);
+      query.$or = [
+        { name: { $regex: q, $options: 'i' } },
+        { email: { $regex: q, $options: 'i' } },
+        { message: { $regex: q, $options: 'i' } },
+      ];
     }
-    return res.status(200).json(new ApiResponse(200, contacts, 'Contacts list fetched successfully'));
+    if (status && status !== 'All') query.status = status;
+
+    let sortOptions = { createdAt: -1 };
+    if (sortBy === 'oldest') sortOptions = { createdAt: 1 };
+
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 10;
+    const skip = (pageNum - 1) * limitNum;
+
+    const [items, total] = await Promise.all([
+      Contact.find(query).sort(sortOptions).skip(skip).limit(limitNum).lean(),
+      Contact.countDocuments(query),
+    ]);
+
+    return res.status(200).json(new ApiResponse(200, {
+      contacts: items,
+      total,
+      page: pageNum,
+      totalPages: Math.ceil(total / limitNum) || 1,
+    }, 'Contacts retrieved successfully'));
   } catch (error) {
     next(error);
   }
@@ -84,14 +67,9 @@ export const getAllContacts = async (req, res, next) => {
 export const getContactById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    let contact = await Contact.findById(id).catch(() => null);
-    if (!contact) {
-      contact = mockContacts.find(c => c._id === id || c.id === id) || null;
-    }
-    if (!contact) {
-      return next(new ApiError(404, 'Contact inquiry not found'));
-    }
-    return res.status(200).json(new ApiResponse(200, contact, 'Contact fetched successfully'));
+    const contact = await Contact.findById(id).lean();
+    if (!contact) return next(new ApiError(404, 'Contact not found'));
+    return res.status(200).json(new ApiResponse(200, contact, 'Contact retrieved successfully'));
   } catch (error) {
     next(error);
   }
@@ -101,37 +79,12 @@ export const updateContactStatus = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { status, notes } = req.body;
-
-    let contact = await Contact.findByIdAndUpdate(id, { status, notes }, { new: true, runValidators: true }).catch(() => null);
-    if (!contact) {
-      const idx = mockContacts.findIndex(c => c._id === id || c.id === id);
-      if (idx !== -1) {
-        if (status) mockContacts[idx].status = status;
-        if (notes !== undefined) mockContacts[idx].notes = notes;
-        contact = mockContacts[idx];
-      }
-    }
-
-    if (!contact) {
-      return next(new ApiError(404, 'Contact inquiry record not found'));
-    }
-
-    const statusPriorityMap = { reviewed: 'Low', responded: 'High', contacted: 'High', resolved: 'Medium', archived: 'Low' };
-    const adminName = req.user?.email || req.user?.name || 'Admin';
-
-    createNotificationHelper({
-      title: '📋 Contact Status Updated',
-      message: `${contact.name || 'Customer'}'s inquiry (${contact._id}) marked as "${status}" by ${adminName}.`,
-      type: 'Contact',
-      icon: 'Mail',
-      priority: statusPriorityMap[status] || 'Medium',
-      relatedModule: 'Contact',
-      relatedRecordId: contact._id,
-      actionUrl: '/admin/contacts',
-      createdBy: adminName
-    }).catch(err => console.error('Status change notification error:', err));
-
-    return res.status(200).json(new ApiResponse(200, contact, 'Contact status updated'));
+    const updateData = {};
+    if (status) updateData.status = status;
+    if (notes !== undefined) updateData.notes = notes;
+    const updated = await Contact.findByIdAndUpdate(id, updateData, { new: true, runValidators: true }).lean();
+    if (!updated) return next(new ApiError(404, 'Contact not found'));
+    return res.status(200).json(new ApiResponse(200, updated, 'Contact updated successfully'));
   } catch (error) {
     next(error);
   }
@@ -140,11 +93,9 @@ export const updateContactStatus = async (req, res, next) => {
 export const deleteContact = async (req, res, next) => {
   try {
     const { id } = req.params;
-    await Contact.findByIdAndDelete(id).catch(() => null);
-    const idx = mockContacts.findIndex(c => c._id === id || c.id === id);
-    if (idx !== -1) mockContacts.splice(idx, 1);
-
-    return res.status(200).json(new ApiResponse(200, null, 'Contact inquiry deleted successfully'));
+    const deleted = await Contact.findByIdAndDelete(id);
+    if (!deleted) return next(new ApiError(404, 'Contact not found'));
+    return res.status(200).json(new ApiResponse(200, { id }, 'Contact deleted successfully'));
   } catch (error) {
     next(error);
   }
