@@ -19,9 +19,9 @@ const router = Router();
 router.get('/', getBlogs);
 router.get('/id/:id', getBlogById);
 router.get('/:slug', getBlogBySlug);
-router.post('/', protect, authorize('Super Admin', 'Admin'), createBlog);
-router.put('/:id', protect, authorize('Super Admin', 'Admin'), updateBlog);
-router.delete('/:id', protect, authorize('Super Admin', 'Admin'), deleteBlog);
+router.post('/', protect, authorize('super_admin', 'admin', 'manager'), createBlog);
+router.put('/:id', protect, authorize('super_admin', 'admin', 'manager'), updateBlog);
+router.delete('/:id', protect, authorize('super_admin', 'admin', 'manager'), deleteBlog);
 
 router.get('/:blogId/comments', getBlogComments);
 router.post('/:blogId/comments', createComment);

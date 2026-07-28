@@ -7,8 +7,8 @@ const router = Router();
 
 router.get('/', getProjects);
 router.get('/slug/:slug', getProjectBySlug);
-router.post('/', protect, authorize('admin'), createProject);
-router.put('/:id', protect, authorize('admin'), updateProject);
-router.delete('/:id', protect, authorize('admin'), deleteProject);
+router.post('/', protect, authorize('super_admin', 'admin', 'manager'), createProject);
+router.put('/:id', protect, authorize('super_admin', 'admin', 'manager'), updateProject);
+router.delete('/:id', protect, authorize('super_admin', 'admin', 'manager'), deleteProject);
 
 export default router;

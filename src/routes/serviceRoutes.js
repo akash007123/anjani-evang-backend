@@ -7,8 +7,8 @@ const router = Router();
 
 router.get('/', getServices);
 router.get('/:slug', getServiceBySlug);
-router.post('/', protect, authorize('admin'), createService);
-router.put('/:id', protect, authorize('admin'), updateService);
-router.delete('/:id', protect, authorize('admin'), deleteService);
+router.post('/', protect, authorize('super_admin', 'admin', 'manager'), createService);
+router.put('/:id', protect, authorize('super_admin', 'admin', 'manager'), updateService);
+router.delete('/:id', protect, authorize('super_admin', 'admin', 'manager'), deleteService);
 
 export default router;

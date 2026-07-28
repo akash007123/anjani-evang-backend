@@ -6,8 +6,8 @@ import { getFAQs, createFAQ, updateFAQ, deleteFAQ } from '../controllers/faqCont
 const router = Router();
 
 router.get('/', getFAQs);
-router.post('/', protect, authorize('admin'), createFAQ);
-router.put('/:id', protect, authorize('admin'), updateFAQ);
-router.delete('/:id', protect, authorize('admin'), deleteFAQ);
+router.post('/', protect, authorize('super_admin', 'admin', 'manager'), createFAQ);
+router.put('/:id', protect, authorize('super_admin', 'admin', 'manager'), updateFAQ);
+router.delete('/:id', protect, authorize('super_admin', 'admin', 'manager'), deleteFAQ);
 
 export default router;

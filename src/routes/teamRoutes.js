@@ -6,8 +6,8 @@ import { getTeam, createTeamMember, updateTeamMember, deleteTeamMember } from '.
 const router = Router();
 
 router.get('/', getTeam);
-router.post('/', protect, authorize('admin'), createTeamMember);
-router.put('/:id', protect, authorize('admin'), updateTeamMember);
-router.delete('/:id', protect, authorize('admin'), deleteTeamMember);
+router.post('/', protect, authorize('super_admin', 'admin', 'manager'), createTeamMember);
+router.put('/:id', protect, authorize('super_admin', 'admin', 'manager'), updateTeamMember);
+router.delete('/:id', protect, authorize('super_admin', 'admin', 'manager'), deleteTeamMember);
 
 export default router;

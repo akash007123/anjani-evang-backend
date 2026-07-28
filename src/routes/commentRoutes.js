@@ -13,12 +13,12 @@ import { authorize } from '../middlewares/roleMiddleware.js';
 
 const router = Router();
 
-router.get('/', protect, authorize('Super Admin', 'Admin'), getAllComments);
-router.get('/:id', protect, authorize('Super Admin', 'Admin'), getCommentById);
+router.get('/', protect, authorize('super_admin', 'admin', 'manager'), getAllComments);
+router.get('/:id', protect, authorize('super_admin', 'admin', 'manager'), getCommentById);
 router.get('/:commentId/replies', getCommentReplies);
 router.post('/:commentId/replies', createReply);
-router.patch('/:id/approve', protect, authorize('Super Admin', 'Admin'), approveComment);
-router.patch('/:id/reject', protect, authorize('Super Admin', 'Admin'), rejectComment);
-router.delete('/:id', protect, authorize('Super Admin', 'Admin'), deleteComment);
+router.patch('/:id/approve', protect, authorize('super_admin', 'admin', 'manager'), approveComment);
+router.patch('/:id/reject', protect, authorize('super_admin', 'admin', 'manager'), rejectComment);
+router.delete('/:id', protect, authorize('super_admin', 'admin', 'manager'), deleteComment);
 
 export default router;

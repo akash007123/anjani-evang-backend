@@ -6,8 +6,8 @@ import { getTestimonials, createTestimonial, updateTestimonial, deleteTestimonia
 const router = Router();
 
 router.get('/', getTestimonials);
-router.post('/', protect, authorize('admin'), createTestimonial);
-router.put('/:id', protect, authorize('admin'), updateTestimonial);
-router.delete('/:id', protect, authorize('admin'), deleteTestimonial);
+router.post('/', protect, authorize('super_admin', 'admin', 'manager'), createTestimonial);
+router.put('/:id', protect, authorize('super_admin', 'admin', 'manager'), updateTestimonial);
+router.delete('/:id', protect, authorize('super_admin', 'admin', 'manager'), deleteTestimonial);
 
 export default router;
