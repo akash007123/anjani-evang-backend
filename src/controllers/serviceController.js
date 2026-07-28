@@ -4,8 +4,38 @@ import { ApiError } from '../utils/apiError.js';
 
 export const getServices = async (req, res, next) => {
   try {
-    const services = await Service.find().lean();
-    return res.status(200).json(new ApiResponse(200, services, 'Services retrieved successfully'));
+    const { search, category, featured, active, sortBy, page = '1', limit = '50' } = req.query;
+    const query = {};
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { shortDescription: { $regex: search, $options: 'i' } },
+        { category: { $regex: search, $options: 'i' } },
+      ];
+    }
+    if (category && category !== 'All') query.category = category;
+    if (featured !== undefined && featured !== '') query.featured = featured === 'true';
+    if (active !== undefined && active !== '') query.active = active === 'true';
+
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 50));
+    const skip = (pageNum - 1) * limitNum;
+
+    let sortObj = { displayOrder: 1 };
+    if (sortBy === 'latest') sortObj = { createdAt: -1 };
+    else if (sortBy === 'oldest') sortObj = { createdAt: 1 };
+    else if (sortBy === 'title') sortObj = { title: 1 };
+
+    const [services, total] = await Promise.all([
+      Service.find(query).sort(sortObj).skip(skip).limit(limitNum).lean(),
+      Service.countDocuments(query),
+    ]);
+    return res.status(200).json(new ApiResponse(200, {
+      services,
+      total,
+      page: pageNum,
+      totalPages: Math.ceil(total / limitNum),
+    }, 'Services retrieved successfully'));
   } catch (error) {
     next(error);
   }
