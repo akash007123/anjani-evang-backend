@@ -2,12 +2,13 @@
   "name": "eveng-catering-backend",
   "version": "1.0.0",
   "description": "Enterprise Express & MongoDB REST API Backend for Eveng Catering",
-  "main": "src/app.js",
+  "main": "src/server.js",
   "type": "module",
   "scripts": {
     "start": "node src/server.js",
     "dev": "node src/server.js",
-    "seed": "node src/seed/seeder.js"
+    "seed": "node src/seed/seeder.js",
+    "seed:services": "node seeders/servicesSeeder.js"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
