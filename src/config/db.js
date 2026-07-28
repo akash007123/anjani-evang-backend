@@ -1,6 +1,9 @@
 import mongoose from 'mongoose';
 
-export const connectDB = async () => {
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 3000;
+
+export const connectDB = async (retryCount = 0) => {
   const uri = process.env.MONGODB_URI;
   const isPlaceholder = !uri || 
     uri.includes("YOUR_CLUSTER") || 
@@ -9,18 +12,33 @@ export const connectDB = async () => {
     uri.includes("YOUR_");
 
   if (isPlaceholder) {
-    console.log("ℹ️ [MongoDB] MONGODB_URI is unconfigured or a placeholder. Enterprise backend is operating in High-Performance In-Memory DB Mode.");
+    console.log("[MongoDB] MONGODB_URI is unconfigured — running without database.");
     return false;
   }
 
   try {
     const conn = await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 15000,
+      connectTimeoutMS: 15000,
+      socketTimeoutMS: 45000,
     });
-    console.log(`✅ [MongoDB] Connected successfully: ${conn.connection.host}`);
+    console.log(`[MongoDB] Connected: ${conn.connection.host}`);
     return true;
   } catch (error) {
-    console.warn(`⚠️ [MongoDB] Connection warning (${error.message}). Enterprise backend operating in high-performance local store mode.`);
+    if (retryCount < MAX_RETRIES) {
+      console.warn(`[MongoDB] Connection attempt ${retryCount + 1} failed (${error.message}). Retrying in ${RETRY_DELAY_MS / 1000}s...`);
+      await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+      return connectDB(retryCount + 1);
+    }
+    console.error(`[MongoDB] All ${MAX_RETRIES} connection attempts failed. Starting without database.`);
     return false;
   }
 };
+
+mongoose.connection.on('disconnected', () => {
+  console.warn('[MongoDB] Disconnected from MongoDB');
+});
+
+mongoose.connection.on('reconnected', () => {
+  console.log('[MongoDB] Reconnected to MongoDB');
+});

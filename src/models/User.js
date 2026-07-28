@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { ROLES } from '../constants/roles.js';
 
 const userSchema = new mongoose.Schema({
   firstName: { type: String, default: '' },
@@ -7,7 +8,7 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   mobile: { type: String, default: '' },
   password: { type: String, required: true },
-  role: { type: String, enum: ['Super Admin', 'Admin', 'Manager', 'Employee'], default: 'Admin' },
+  role: { type: String, enum: Object.values(ROLES), default: ROLES.ADMIN },
   profilePicture: { type: String, default: '' },
   status: { type: String, enum: ['Active', 'Inactive'], default: 'Active' },
   verified: { type: Boolean, default: true },
