@@ -46,7 +46,7 @@ export const getSitemap = async (req, res) => {
           lastmod: blog.updatedAt?.toISOString()
         }));
       });
-    } catch {}
+    } catch (err) { console.warn('[Sitemap] Failed to fetch blogs:', err.message); }
 
     // Dynamic services
     try {
@@ -59,7 +59,7 @@ export const getSitemap = async (req, res) => {
           lastmod: svc.updatedAt?.toISOString()
         }));
       });
-    } catch {}
+    } catch (err) { console.warn('[Sitemap] Failed to fetch services:', err.message); }
 
     // Dynamic projects
     try {
@@ -72,7 +72,7 @@ export const getSitemap = async (req, res) => {
           lastmod: proj.updatedAt?.toISOString()
         }));
       });
-    } catch {}
+    } catch (err) { console.warn('[Sitemap] Failed to fetch projects:', err.message); }
 
     const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"

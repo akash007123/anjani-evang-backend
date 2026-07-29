@@ -14,9 +14,13 @@ const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
 const NEWSLETTER_SUBSCRIBERS_FILE = path.join(DATA_DIR, 'newsletter_subscribers.json');
 
 function ensureLocalFiles() {
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-  for (const file of [BOOKINGS_FILE, SESSIONS_FILE, CONTACTS_FILE, CALENDAR_BOOKINGS_FILE, ORDERS_FILE, NEWSLETTER_SUBSCRIBERS_FILE]) {
-    if (!fs.existsSync(file)) fs.writeFileSync(file, JSON.stringify([], null, 2));
+  try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+    for (const file of [BOOKINGS_FILE, SESSIONS_FILE, CONTACTS_FILE, CALENDAR_BOOKINGS_FILE, ORDERS_FILE, NEWSLETTER_SUBSCRIBERS_FILE]) {
+      if (!fs.existsSync(file)) fs.writeFileSync(file, JSON.stringify([], null, 2));
+    }
+  } catch (err) {
+    console.warn('[DB] Could not create local files:', err.message);
   }
 }
 
