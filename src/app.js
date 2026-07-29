@@ -7,6 +7,7 @@ import cookieParser from 'cookie-parser';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import routes from './routes/index.js';
+import { getSitemap } from './controllers/sitemapController.js';
 import { errorHandler } from './middlewares/errorMiddleware.js';
 import { apiDocs } from './docs/swaggerSpec.js';
 
@@ -69,6 +70,9 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
+// Sitemap endpoint (XML)
+app.get('/api/sitemap.xml', getSitemap);
 
 // Global Error Handling Middleware
 app.use(errorHandler);

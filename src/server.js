@@ -7,6 +7,7 @@ import { connectDB } from './config/db.js';
 import { connectDb } from './services/databaseService.js';
 import { setupSocket } from './socket/index.js';
 import { seedAdmin } from './seeds/adminSeed.js';
+import { seedSettings } from './seeds/settingsSeed.js';
 
 const PORT = process.env.PORT || 3000;
 
@@ -16,6 +17,7 @@ async function startServer() {
 
   if (dbConnected) {
     await seedAdmin();
+    await seedSettings();
   }
 
   const httpServer = http.createServer(app);
