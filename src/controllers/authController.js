@@ -99,7 +99,7 @@ export const login = async (req, res, next) => {
     }
 
     let user = await User.findOne({
-      $or: [{ email: emailOrMobile }, { mobile: emailOrMobile }]
+      $or: [{ email: emailOrMobile }, { mobile: emailOrMobile }, { username: emailOrMobile }]
     }).catch(() => null);
 
     if (!user) {
@@ -109,13 +109,19 @@ export const login = async (req, res, next) => {
     }
 
     if (!user) {
-      return next(new ApiError(401, 'Invalid login credentials. Please verify your email/mobile and password.'));
+      return next(new ApiError(401, 'Invalid login credentials. Please verify your email/mobile/username and password.'));
+    }
+
+    if (user.status !== 'Active') {
+      return next(new ApiError(403, 'Your account is ' + (user.status || 'inactive') + '. Please contact your administrator.'));
     }
 
     const isMatch = await comparePassword(password, user.password);
     if (!isMatch) {
       return next(new ApiError(401, 'Invalid credentials provided.'));
     }
+
+    await User.findByIdAndUpdate(user._id, { lastLogin: new Date() }).catch(() => {});
 
     const token = generateToken({
       id: user._id || user.id,
@@ -133,7 +139,9 @@ export const login = async (req, res, next) => {
         name: user.name,
         email: user.email,
         mobile: user.mobile,
+        username: user.username || '',
         role: user.role,
+        status: user.status || 'Active',
         profilePicture: user.profilePicture || ''
       }
     }, 'Authentication successful'));
@@ -158,7 +166,9 @@ export const getMe = async (req, res, next) => {
       name: user.name,
       email: user.email,
       mobile: user.mobile,
+      username: user.username || '',
       role: user.role,
+      status: user.status || 'Active',
       profilePicture: user.profilePicture || ''
     }, 'User profile retrieved'));
   } catch (error) {

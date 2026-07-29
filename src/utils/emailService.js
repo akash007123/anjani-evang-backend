@@ -429,6 +429,61 @@ export async function sendNewsletterConfirmation(email) {
   return safeSendMail(email, subject, html, 'Newsletter Signup');
 }
 
+export async function sendWelcomeEmail(userData, plainPassword) {
+  const { name, email, username, role, password } = userData;
+  const finalPassword = plainPassword || password || 'Welcome@123';
+  const loginUrl = process.env.LOGIN_URL || 'https://anjani-eveng.vercel.app/admin-login';
+
+  const subject = `Welcome to Anjani Catering & Events — Your Account Is Ready`;
+  const html = generateHtmlTemplate({
+    customerName: name || 'Team Member',
+    subject,
+    mainTitle: 'Welcome to the Team!',
+    mainMessage: `We are delighted to welcome you to <strong>Anjani Catering & Events</strong>. Your administrator account has been successfully created. You can now access the admin control panel to manage catering operations, bookings, menu items, and more.`,
+    summaryFields: [
+      { label: 'Employee Name', value: name || '' },
+      { label: 'Assigned Role', value: role || 'Staff' },
+      { label: 'Username', value: username || email },
+      { label: 'Login Email', value: email },
+      { label: 'Temporary Password', value: finalPassword }
+    ],
+    nextSteps: [
+      'Log in to the admin panel using your email/username and the temporary password above.',
+      'You will be prompted to change your password on first login for security purposes.',
+      'Explore the dashboard to manage bookings, services, menu items, and client inquiries.',
+      'Contact your Super Admin if you need role or permission adjustments.'
+    ],
+    ctaText: 'Access Admin Panel',
+    ctaUrl: loginUrl
+  });
+  return sendMail({ to: email, subject, html });
+}
+
+export async function sendPasswordResetEmail(userData, newPassword) {
+  const { name, email } = userData;
+  const loginUrl = process.env.LOGIN_URL || 'https://anjani-eveng.vercel.app/admin-login';
+
+  const subject = 'Your Anjani Catering Password Has Been Reset';
+  const html = generateHtmlTemplate({
+    customerName: name || 'Valued Team Member',
+    subject,
+    mainTitle: 'Password Reset Successful',
+    mainMessage: `Your password for <strong>Anjani Catering & Events</strong> admin panel has been reset by an administrator. Please use the temporary credentials below to log in.`,
+    summaryFields: [
+      { label: 'Account Email', value: email },
+      { label: 'New Password', value: newPassword }
+    ],
+    nextSteps: [
+      'Log in using your email and the new temporary password above.',
+      'For security, please change your password immediately after logging in.',
+      'If you did not request this reset, please contact your Super Admin right away.'
+    ],
+    ctaText: 'Log In to Admin Panel',
+    ctaUrl: loginUrl
+  });
+  return sendMail({ to: email, subject, html });
+}
+
 export async function sendAdminNotification(formType, data) {
   const adminEmail = process.env.ADMIN_EMAIL;
   if (!adminEmail) return { success: true, bypassed: true };
