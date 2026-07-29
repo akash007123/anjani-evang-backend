@@ -176,6 +176,55 @@ export const getMe = async (req, res, next) => {
   }
 };
 
+export const updateProfile = async (req, res, next) => {
+  try {
+    const body = { ...req.body };
+    if (body.email) body.email = body.email.trim().toLowerCase();
+    if (body.firstName || body.lastName) {
+      body.name = `${body.firstName || ''} ${body.lastName || ''}`.trim();
+    }
+    delete body.password;
+    delete body.role;
+    delete body.username;
+    delete body.status;
+
+    let updated;
+
+    try {
+      updated = await User.findByIdAndUpdate(req.user.id, body, { new: true, runValidators: true }).select('-password').lean();
+    } catch {}
+
+    if (!updated) {
+      const memUser = Array.from(inMemoryUsers.values()).find(
+        u => u.id === req.user.id || (u._id && String(u._id) === req.user.id)
+      );
+      if (memUser) {
+        Object.assign(memUser, body);
+        inMemoryUsers.set(memUser.email, memUser);
+        updated = { ...memUser };
+        delete updated.password;
+      }
+    }
+
+    if (!updated) {
+      return next(new ApiError(404, 'User profile not found. Please login again.'));
+    }
+
+    return res.status(200).json(new ApiResponse(200, {
+      id: updated._id || updated.id,
+      name: updated.name,
+      email: updated.email,
+      mobile: updated.mobile,
+      username: updated.username || '',
+      role: updated.role,
+      status: updated.status || 'Active',
+      profilePicture: updated.profilePicture || ''
+    }, 'Profile updated successfully'));
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const verifyAccount = async (req, res, next) => {
   try {
     const { emailOrMobile } = req.body;

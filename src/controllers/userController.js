@@ -159,7 +159,12 @@ export const updateUser = async (req, res, next) => {
       if (existing) return next(new ApiError(400, 'This mobile number is already registered by another user'));
     }
 
-    const updated = await User.findByIdAndUpdate(id, body, { new: true, runValidators: true }).select('-password').lean();
+    let updated;
+    try {
+      updated = await User.findByIdAndUpdate(id, body, { new: true, runValidators: true }).select('-password').lean();
+    } catch {
+      return next(new ApiError(400, 'Invalid user ID format'));
+    }
     if (!updated) return next(new ApiError(404, 'User not found'));
 
     createNotificationHelper({
