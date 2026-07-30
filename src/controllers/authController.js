@@ -21,7 +21,7 @@ export const register = async (req, res, next) => {
   try {
     const dbErr = requireDb(); if (dbErr) return next(dbErr);
 
-    const { name, email, mobile, password, role } = req.body;
+    const { name, email, mobile, password, role, profilePicture } = req.body;
 
     let existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -37,6 +37,7 @@ export const register = async (req, res, next) => {
       mobile,
       password: hashedPassword,
       role: userRole,
+      profilePicture,
       verified: true,
       permissions: ['all']
     });
@@ -58,7 +59,8 @@ export const register = async (req, res, next) => {
         email: newUser.email,
         mobile: newUser.mobile,
         role: newUser.role,
-        profilePicture: newUser.profilePicture || ''
+        profilePicture: newUser.profilePicture || '',
+        permissions: newUser.permissions || []
       }
     }, 'User registered successfully'));
   } catch (error) {
@@ -116,7 +118,8 @@ export const login = async (req, res, next) => {
         username: user.username || '',
         role: user.role,
         status: user.status || 'Active',
-        profilePicture: user.profilePicture || ''
+        profilePicture: user.profilePicture || '',
+        permissions: user.permissions || []
       }
     }, 'Authentication successful'));
   } catch (error) {
@@ -142,7 +145,8 @@ export const getMe = async (req, res, next) => {
       username: user.username || '',
       role: user.role,
       status: user.status || 'Active',
-      profilePicture: user.profilePicture || ''
+      profilePicture: user.profilePicture || '',
+      permissions: user.permissions || []
     }, 'User profile retrieved'));
   } catch (error) {
     next(error);
@@ -177,7 +181,8 @@ export const updateProfile = async (req, res, next) => {
       username: updated.username || '',
       role: updated.role,
       status: updated.status || 'Active',
-      profilePicture: updated.profilePicture || ''
+      profilePicture: updated.profilePicture || '',
+      permissions: updated.permissions || []
     }, 'Profile updated successfully'));
   } catch (error) {
     next(error);
