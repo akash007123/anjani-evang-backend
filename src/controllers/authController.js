@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { User } from '../models/User.js';
 import { generateToken } from '../utils/jwt.js';
 import { hashPassword, comparePassword } from '../utils/password.js';
@@ -5,34 +6,24 @@ import { ApiResponse } from '../utils/apiResponse.js';
 import { ApiError } from '../utils/apiError.js';
 import { ROLES } from '../constants/roles.js';
 
-// In-memory fallback state if database is disconnected
-const inMemoryUsers = new Map();
+function dbIsConnected() {
+  return mongoose.connection.readyState === 1;
+}
 
-// Seed initial default super admin
-(async () => {
-  const defaultAdmin = {
-    id: 'admin-1',
-    name: 'Executive Admin',
-    email: 'admin@evengcatering.com',
-    mobile: '+1 (800) 555-2283',
-    password: await hashPassword('Admin123!'),
-    role: ROLES.SUPER_ADMIN,
-    profilePicture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
-    verified: true,
-    permissions: ['all']
-  };
-  inMemoryUsers.set('admin@evengcatering.com', defaultAdmin);
-})();
+function requireDb() {
+  if (!dbIsConnected()) {
+    return new ApiError(503, 'Database not connected. Please try again later.');
+  }
+  return null;
+}
 
 export const register = async (req, res, next) => {
   try {
+    const dbErr = requireDb(); if (dbErr) return next(dbErr);
+
     const { name, email, mobile, password, role } = req.body;
 
-    let existingUser = await User.findOne({ email }).catch(() => null);
-    if (!existingUser && inMemoryUsers.has(email)) {
-      existingUser = inMemoryUsers.get(email);
-    }
-
+    let existingUser = await User.findOne({ email });
     if (existingUser) {
       return next(new ApiError(400, 'An account with this email address already exists.'));
     }
@@ -40,33 +31,18 @@ export const register = async (req, res, next) => {
     const hashedPassword = await hashPassword(password);
     const userRole = role || ROLES.ADMIN;
 
-    let newUser;
-    try {
-      newUser = await User.create({
-        name,
-        email,
-        mobile,
-        password: hashedPassword,
-        role: userRole,
-        verified: true,
-        permissions: ['all']
-      });
-    } catch {
-      newUser = {
-        id: `user-${Date.now()}`,
-        name,
-        email,
-        mobile,
-        password: hashedPassword,
-        role: userRole,
-        verified: true,
-        permissions: ['all']
-      };
-      inMemoryUsers.set(email, newUser);
-    }
+    const newUser = await User.create({
+      name,
+      email,
+      mobile,
+      password: hashedPassword,
+      role: userRole,
+      verified: true,
+      permissions: ['all']
+    });
 
     const token = generateToken({
-      id: newUser._id || newUser.id,
+      id: newUser._id,
       email: newUser.email,
       role: newUser.role,
       name: newUser.name
@@ -77,7 +53,7 @@ export const register = async (req, res, next) => {
     return res.status(201).json(new ApiResponse(201, {
       token,
       user: {
-        id: newUser._id || newUser.id,
+        id: newUser._id,
         name: newUser.name,
         email: newUser.email,
         mobile: newUser.mobile,
@@ -92,21 +68,17 @@ export const register = async (req, res, next) => {
 
 export const login = async (req, res, next) => {
   try {
+    const dbErr = requireDb(); if (dbErr) return next(dbErr);
+
     const { emailOrMobile, password } = req.body;
 
     if (!emailOrMobile || !password) {
       return next(new ApiError(400, 'Please provide both email/mobile and password.'));
     }
 
-    let user = await User.findOne({
+    const user = await User.findOne({
       $or: [{ email: emailOrMobile }, { mobile: emailOrMobile }, { username: emailOrMobile }]
-    }).catch(() => null);
-
-    if (!user) {
-      user = Array.from(inMemoryUsers.values()).find(
-        u => u.email === emailOrMobile || u.mobile === emailOrMobile
-      );
-    }
+    });
 
     if (!user) {
       return next(new ApiError(401, 'Invalid login credentials. Please verify your email/mobile/username and password.'));
@@ -121,10 +93,12 @@ export const login = async (req, res, next) => {
       return next(new ApiError(401, 'Invalid credentials provided.'));
     }
 
-    await User.findByIdAndUpdate(user._id, { lastLogin: new Date() }).catch(() => {});
+    if (user._id) {
+      await User.findByIdAndUpdate(user._id, { lastLogin: new Date() }).catch(() => {});
+    }
 
     const token = generateToken({
-      id: user._id || user.id,
+      id: user._id,
       email: user.email,
       role: user.role,
       name: user.name
@@ -135,7 +109,7 @@ export const login = async (req, res, next) => {
     return res.status(200).json(new ApiResponse(200, {
       token,
       user: {
-        id: user._id || user.id,
+        id: user._id,
         name: user.name,
         email: user.email,
         mobile: user.mobile,
@@ -152,17 +126,16 @@ export const login = async (req, res, next) => {
 
 export const getMe = async (req, res, next) => {
   try {
-    let user = await User.findById(req.user.id).select('-password').catch(() => null);
-    if (!user) {
-      user = Array.from(inMemoryUsers.values()).find(u => u.id === req.user.id || u._id === req.user.id);
-    }
+    const dbErr = requireDb(); if (dbErr) return next(dbErr);
+
+    const user = await User.findById(req.user.id).select('-password');
 
     if (!user) {
       return next(new ApiError(404, 'Authenticated user profile not found.'));
     }
 
     return res.status(200).json(new ApiResponse(200, {
-      id: user._id || user.id,
+      id: user._id,
       name: user.name,
       email: user.email,
       mobile: user.mobile,
@@ -178,6 +151,8 @@ export const getMe = async (req, res, next) => {
 
 export const updateProfile = async (req, res, next) => {
   try {
+    const dbErr = requireDb(); if (dbErr) return next(dbErr);
+
     const body = { ...req.body };
     if (body.email) body.email = body.email.trim().toLowerCase();
     if (body.firstName || body.lastName) {
@@ -188,30 +163,14 @@ export const updateProfile = async (req, res, next) => {
     delete body.username;
     delete body.status;
 
-    let updated;
-
-    try {
-      updated = await User.findByIdAndUpdate(req.user.id, body, { new: true, runValidators: true }).select('-password').lean();
-    } catch {}
-
-    if (!updated) {
-      const memUser = Array.from(inMemoryUsers.values()).find(
-        u => u.id === req.user.id || (u._id && String(u._id) === req.user.id)
-      );
-      if (memUser) {
-        Object.assign(memUser, body);
-        inMemoryUsers.set(memUser.email, memUser);
-        updated = { ...memUser };
-        delete updated.password;
-      }
-    }
+    const updated = await User.findByIdAndUpdate(req.user.id, body, { new: true, runValidators: true }).select('-password').lean();
 
     if (!updated) {
       return next(new ApiError(404, 'User profile not found. Please login again.'));
     }
 
     return res.status(200).json(new ApiResponse(200, {
-      id: updated._id || updated.id,
+      id: updated._id,
       name: updated.name,
       email: updated.email,
       mobile: updated.mobile,
@@ -227,19 +186,17 @@ export const updateProfile = async (req, res, next) => {
 
 export const verifyAccount = async (req, res, next) => {
   try {
+    const dbErr = requireDb(); if (dbErr) return next(dbErr);
+
     const { emailOrMobile } = req.body;
     if (!emailOrMobile) {
       return next(new ApiError(400, 'Email or mobile is required.'));
     }
 
-    let user = await User.findOne({
+    const user = await User.findOne({
       $or: [{ email: emailOrMobile }, { mobile: emailOrMobile }]
-    }).catch(() => null);
-    if (!user) {
-      user = Array.from(inMemoryUsers.values()).find(
-        u => u.email === emailOrMobile || u.mobile === emailOrMobile
-      );
-    }
+    });
+
     if (!user) {
       return next(new ApiError(404, 'No account found with that email or mobile.'));
     }
@@ -255,6 +212,8 @@ export const verifyAccount = async (req, res, next) => {
 
 export const resetPassword = async (req, res, next) => {
   try {
+    const dbErr = requireDb(); if (dbErr) return next(dbErr);
+
     const { emailOrMobile, newPassword } = req.body;
     if (!emailOrMobile || !newPassword) {
       return next(new ApiError(400, 'Email/mobile and new password are required.'));
@@ -263,32 +222,14 @@ export const resetPassword = async (req, res, next) => {
       return next(new ApiError(400, 'Password must be at least 8 characters.'));
     }
 
-    const hashed = await hashPassword(newPassword);
-    let updated = false;
+    const user = await User.findOne({ $or: [{ email: emailOrMobile }, { mobile: emailOrMobile }] });
 
-    try {
-      const user = await User.findOne({ $or: [{ email: emailOrMobile }, { mobile: emailOrMobile }] });
-      if (user) {
-        user.password = hashed;
-        await user.save();
-        updated = true;
-      }
-    } catch {}
-
-    if (!updated) {
-      const memUser = Array.from(inMemoryUsers.values()).find(
-        u => u.email === emailOrMobile || u.mobile === emailOrMobile
-      );
-      if (memUser) {
-        memUser.password = hashed;
-        inMemoryUsers.set(memUser.email, memUser);
-        updated = true;
-      }
-    }
-
-    if (!updated) {
+    if (!user) {
       return next(new ApiError(404, 'Account not found.'));
     }
+
+    user.password = await hashPassword(newPassword);
+    await user.save();
 
     return res.status(200).json(new ApiResponse(200, null, 'Password reset successfully.'));
   } catch (error) {
