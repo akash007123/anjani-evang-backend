@@ -48,8 +48,8 @@ export function generateBrandEmailHtml({
   badgeText,
   summaryFields = [],
   nextSteps = [],
-  ctaText = 'Visit Eveng Catering',
-  ctaUrl = 'https://evengcatering.com'
+  ctaText = 'Visit Anjani Catering & Events',
+  ctaUrl = 'https://anjanievents.in'
 }) {
   const summaryRowsHtml = summaryFields
     .map(
@@ -81,9 +81,9 @@ export function generateBrandEmailHtml({
       <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 620px; margin: 30px auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05);">
         <tr>
           <td align="center" style="background-color: #102417; padding: 32px 24px; border-bottom: 4px solid #D4AF37;">
-            <div style="display: inline-block; width: 42px; height: 42px; border-radius: 10px; background-color: #D4AF37; text-align: center; line-height: 42px; color: #102417; font-weight: bold; font-size: 20px; margin-bottom: 10px;">E</div>
-            <h1 style="margin: 0; font-family: Georgia, serif; font-size: 22px; font-weight: bold; color: #ffffff; letter-spacing: 2px;">EVENG CATERING</h1>
-            <p style="margin: 4px 0 0 0; font-size: 11px; color: #D4AF37; font-weight: bold; letter-spacing: 1.5px; text-transform: uppercase;">Luxury Culinary &amp; Event Logistics</p>
+            <div style="display: inline-block; width: 42px; height: 42px; border-radius: 10px; background-color: #D4AF37; text-align: center; line-height: 42px; color: #102417; font-weight: bold; font-size: 20px; margin-bottom: 10px;">अ</div>
+            <h1 style="margin: 0; font-family: Georgia, serif; font-size: 22px; font-weight: bold; color: #ffffff; letter-spacing: 2px;">ANJANI CATERING & EVENTS</h1>
+            <p style="margin: 4px 0 0 0; font-size: 11px; color: #D4AF37; font-weight: bold; letter-spacing: 1.5px; text-transform: uppercase;">Premium Wedding &amp; Event Catering</p>
           </td>
         </tr>
         <tr>
@@ -116,9 +116,9 @@ export function generateBrandEmailHtml({
         </tr>
         <tr>
           <td style="padding: 24px 32px; background-color: #f1f5f9; border-top: 1px solid #e2e8f0; text-align: center; font-size: 12px; color: #64748b; line-height: 1.5;">
-            <p style="margin: 0 0 6px 0; font-weight: bold; color: #102417;">Eveng Catering Services</p>
-            <p style="margin: 0 0 10px 0;">Direct Hotline: +91 98765 43210 | Email: inquiries@evengcatering.com</p>
-            <p style="margin: 0; font-size: 11px; color: #94a3b8;">&copy; ${new Date().getFullYear()} Eveng Catering. All Rights Reserved.</p>
+            <p style="margin: 0 0 6px 0; font-weight: bold; color: #102417;">Anjani Catering & Events</p>
+            <p style="margin: 0 0 10px 0;">Direct Hotline: +91 98765 43210 | Email: sales@anjanievents.in</p>
+            <p style="margin: 0; font-size: 11px; color: #94a3b8;">&copy; ${new Date().getFullYear()} Anjani Catering & Events. All Rights Reserved.</p>
           </td>
         </tr>
       </table>
@@ -129,13 +129,13 @@ export function generateBrandEmailHtml({
 export async function sendMail({ to, subject, html, text }) {
   try {
     const mailTransporter = getTransporter();
-    const from = process.env.SMTP_FROM || '"Eveng Catering Services" <no-reply@evengcatering.com>';
+    const from = process.env.SMTP_FROM || '"Anjani Catering & Events" <sales@anjanievents.in>';
     const info = await mailTransporter.sendMail({
       from,
       to,
       subject,
       html,
-      text: text || 'Thank you for contacting Eveng Catering Services.'
+      text: text || 'Thank you for contacting Anjani Catering & Events.'
     });
     console.log(`[Email] Dispatched to ${to} (Subject: "${subject}")`);
     return { success: true, messageId: info.messageId };
@@ -147,12 +147,12 @@ export async function sendMail({ to, subject, html, text }) {
 
 export async function sendBookingAckEmail(bookingData) {
   if (!bookingData || !bookingData.email) return false;
-  const subject = `Booking Confirmation Received: Ref #${bookingData.bookingReference || 'EVG-HOLD'}`;
+  const subject = `Booking Confirmation Received: Ref #${bookingData.bookingReference || 'ANJ-HOLD'}`;
   const html = generateBrandEmailHtml({
     recipientName: bookingData.fullName || 'Valued Client',
     title: subject,
     badgeText: 'RESERVATION HOLD ACKNOWLEDGMENT',
-    subtitle: `Thank you for choosing Eveng Catering Services! We have successfully received your reservation inquiry for your upcoming <strong>${escapeHtml(bookingData.eventType || 'Event')}</strong>. Our banqueting concierge is reviewing your request.`,
+    subtitle: `Thank you for choosing Anjani Catering & Events! We have successfully received your reservation inquiry for your upcoming <strong>${escapeHtml(bookingData.eventType || 'Event')}</strong>. Our banqueting concierge is reviewing your request.`,
     summaryFields: [
       { label: 'Booking Reference', value: `#${bookingData.bookingReference}` },
       { label: 'Event Date & Time', value: `${bookingData.eventDate || 'TBD'} at ${bookingData.eventTime || '12:00 PM'}` },
@@ -172,7 +172,7 @@ export async function sendBookingAckEmail(bookingData) {
 
 export async function sendContactAckEmail(contactData) {
   if (!contactData || !contactData.email) return false;
-  const subject = 'Inquiry Received: Thank you for contacting Eveng Catering';
+  const subject = 'Inquiry Received: Thank you for contacting Anjani Catering & Events';
   const summaryFields = [
     { label: 'Name', value: contactData.name },
     { label: 'Email', value: contactData.email }
@@ -187,7 +187,7 @@ export async function sendContactAckEmail(contactData) {
     recipientName: contactData.name || 'Valued Guest',
     title: subject,
     badgeText: 'INQUIRY ACKNOWLEDGMENT',
-    subtitle: 'Thank you for reaching out to Eveng Catering! We have received your inquiry. Our event planning representatives will review your preferences and respond promptly.',
+    subtitle: 'Thank you for reaching out to Anjani Catering & Events! We have received your inquiry. Our event planning representatives will review your preferences and respond promptly.',
     summaryFields,
     nextSteps: [
       'Our customer support team will analyze your specific inquiry and dietary preferences.',
@@ -200,7 +200,7 @@ export async function sendContactAckEmail(contactData) {
 
 // --- Frontend merged rich template system ---
 
-function generateHtmlTemplate({ customerName, subject, mainTitle, mainMessage, summaryFields, nextSteps, ctaText = 'Visit Our Website', ctaUrl = 'https://evengcatering.com' }) {
+function generateHtmlTemplate({ customerName, subject, mainTitle, mainMessage, summaryFields, nextSteps, ctaText = 'Visit Our Website', ctaUrl = 'https://anjanievents.in' }) {
   const summaryRowsHtml = summaryFields
     .map(
       (f) => `
@@ -232,9 +232,9 @@ function generateHtmlTemplate({ customerName, subject, mainTitle, mainMessage, s
       <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border: 1px solid #EAE5DB; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 30px rgba(31,62,41,0.04);">
         <tr>
           <td align="center" style="background-color: #1F3E29; padding: 35px 40px; border-bottom: 4px solid #D49A5B;">
-            <div style="display: inline-block; width: 44px; height: 44px; border-radius: 50%; background-color: #D49A5B; text-align: center; line-height: 44px; margin-bottom: 12px; color: #1F3E29; font-weight: bold; font-size: 20px;">E</div>
-            <h1 style="margin: 0; font-family: 'Playfair Display', Georgia, serif; font-size: 22px; font-weight: 800; color: #ffffff; letter-spacing: 4px; text-transform: uppercase;">EVENG CATERING</h1>
-            <p style="margin: 4px 0 0 0; font-size: 10px; color: #D49A5B; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;">Culinary Integrity &amp; Bespoke Banquets</p>
+            <div style="display: inline-block; width: 44px; height: 44px; border-radius: 50%; background-color: #D49A5B; text-align: center; line-height: 44px; margin-bottom: 12px; color: #1F3E29; font-weight: bold; font-size: 20px;">अ</div>
+            <h1 style="margin: 0; font-family: 'Playfair Display', Georgia, serif; font-size: 22px; font-weight: 800; color: #ffffff; letter-spacing: 4px; text-transform: uppercase;">ANJANI CATERING & EVENTS</h1>
+            <p style="margin: 4px 0 0 0; font-size: 10px; color: #D49A5B; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;">Bespoke Culinary Experiences</p>
           </td>
         </tr>
         <tr>
@@ -288,17 +288,17 @@ function generateHtmlTemplate({ customerName, subject, mainTitle, mainMessage, s
           <td style="padding: 30px 40px; background-color: #FDFBF7; border-top: 1px solid #ECE7DE; border-bottom: 1px solid #ECE7DE;">
             <h4 style="margin: 0 0 8px 0; font-family: 'Playfair Display', Georgia, serif; font-size: 13px; font-weight: bold; color: #1F3E29; text-transform: uppercase; letter-spacing: 1px;">Direct Concierge Assistance</h4>
             <p style="margin: 0; font-size: 12px; color: #555555; line-height: 1.5;">
-              Phone: <strong>+1 (800) 555-CATER</strong> (9:00 AM - 6:00 PM)<br>
-              Email: <a href="mailto:inquiries@evengcatering.com" style="color: #D49A5B; text-decoration: none; font-weight: 600;">inquiries@evengcatering.com</a><br>
-              Website: <a href="${escapeHtml(ctaUrl)}" style="color: #D49A5B; text-decoration: none; font-weight: 600;">www.evengcatering.com</a>
+              Phone: <strong>+91-9685533878</strong> (9:00 AM - 6:00 PM)<br>
+              Email: <a href="mailto:sales@anjanievents.in" style="color: #D49A5B; text-decoration: none; font-weight: 600;">sales@anjanievents.in</a><br>
+              Website: <a href="${escapeHtml(ctaUrl)}" style="color: #D49A5B; text-decoration: none; font-weight: 600;">www.anjanievents.in</a>
             </p>
           </td>
         </tr>
         <tr>
           <td align="center" style="padding: 30px 40px; background-color: #1F3E29; color: #A0AEC0;">
-            <p style="margin: 0 0 10px 0; font-weight: 600; color: #D49A5B;">EVENG CATERING INC.</p>
-            <p style="margin: 0 0 15px 0;">90210 Gourmet Row, Suite A, Beverly Hills, CA 90210</p>
-            <p style="margin: 0;">&copy; ${new Date().getFullYear()} Eveng Catering. All Rights Reserved.</p>
+            <p style="margin: 0 0 10px 0; font-weight: 600; color: #D49A5B;">ANJANI CATERING & EVENTS INC.</p>
+            <p style="margin: 0 0 15px 0;">Maharastra Marg, Rani ki Bagiya, Chhatarpur, Madhya Pradesh 471001</p>
+            <p style="margin: 0;">&copy; ${new Date().getFullYear()} Anjani Catering & Events. All Rights Reserved.</p>
           </td>
         </tr>
       </table>
@@ -309,7 +309,7 @@ function generateHtmlTemplate({ customerName, subject, mainTitle, mainMessage, s
 async function safeSendMail(to, subject, html, formType) {
   try {
     const transporter = getTransporter();
-    const from = process.env.SMTP_FROM || '"Eveng Catering Services" <no-reply@evengcatering.com>';
+    const from = process.env.SMTP_FROM || '"Anjani Catering & Events" <sales@anjanievents.in>';
     const cleanTo = to.replace(/[\r\n]/g, '').trim();
     const cleanSubject = subject.replace(/[\r\n]/g, '').trim();
 
@@ -406,7 +406,7 @@ export async function sendProductInquiryConfirmation(data) {
 
 export async function sendQuoteRequestConfirmation(data) {
   const subject = 'Your Custom Catering Quote Request Is Received';
-  const mainMessage = 'Thank you for requesting a customized catering proposal quote from Eveng Catering. Our gourmet planning representatives are checking wait-staff layouts and service estimates for your gathering.';
+  const mainMessage = 'Thank you for requesting a customized catering proposal quote from Anjani Catering & Events. Our gourmet planning representatives are checking wait-staff layouts and service estimates for your gathering.';
   const summaryFields = [{ label: 'Client Name', value: data.name }, { label: 'Email Address', value: data.email }, { label: 'Notes/Briefing', value: data.message }];
   if (data.phone) summaryFields.push({ label: 'Mobile Phone', value: data.phone });
   if (data.eventType) summaryFields.push({ label: 'Event Category', value: data.eventType });
@@ -419,8 +419,8 @@ export async function sendQuoteRequestConfirmation(data) {
 }
 
 export async function sendNewsletterConfirmation(email) {
-  const subject = 'Welcome to Eveng Catering Culinary Inspiration!';
-  const mainMessage = 'Thank you for joining the Eveng Catering exclusive newsletter network! You are now locked in to receive our monthly gourmet inspirations, seasonal recipe outlines curated by our master chefs, professional banqueting layout tips, and early notifications about tasting sessions.';
+  const subject = 'Welcome to Anjani Catering & Events Culinary Inspiration!';
+  const mainMessage = 'Thank you for joining the Anjani Catering & Events exclusive newsletter network! You are now locked in to receive our monthly gourmet inspirations, seasonal recipe outlines curated by our master chefs, professional banqueting layout tips, and early notifications about tasting sessions.';
   const html = generateHtmlTemplate({
     customerName: 'Gourmet Enthusiast', subject, mainTitle: 'Gourmet newsletter subscription active', mainMessage,
     summaryFields: [{ label: 'Subscriber Email', value: email }],
@@ -490,7 +490,7 @@ export async function sendAdminNotification(formType, data) {
 
   try {
     const transporter = getTransporter();
-    const from = process.env.SMTP_FROM || '"Eveng Catering Services" <no-reply@evengcatering.com>';
+    const from = process.env.SMTP_FROM || '"Anjani Catering & Events" <sales@anjanievents.in>';
     const subject = `[Admin Notification] New submission on ${formType}`;
     const tableRows = Object.entries(data)
       .map(([key, val]) => `
@@ -499,7 +499,7 @@ export async function sendAdminNotification(formType, data) {
         <td style="padding: 6px 12px; border-bottom: 1px solid #ECE7DE; font-size: 12px; color: #1A1A1A;">${typeof val === 'object' ? JSON.stringify(val) : String(val)}</td>
       </tr>`)
       .join('');
-    const html = `<!DOCTYPE html><html><body style="font-family: Arial, sans-serif; background-color: #FDFBF7; padding: 25px; color: #1A1A1A;"><div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #EAE5DB; border-radius: 12px; overflow: hidden; padding: 25px;"><h2 style="color: #1F3E29; border-bottom: 2px solid #D49A5B; padding-bottom: 10px; margin-top: 0;">New Form Submission Alerts</h2><p style="font-size: 13px;">A customer has submitted details on the <strong>${formType}</strong> of the website.</p><table style="width: 100%; border-collapse: collapse; margin: 20px 0; background-color: #F7F4EE;">${tableRows}</table><p style="font-size: 11px; color: #555555;">This is an automated system dispatch. Eveng Catering Back-End Control Panel.</p></div></body></html>`;
+    const html = `<!DOCTYPE html><html><body style="font-family: Arial, sans-serif; background-color: #FDFBF7; padding: 25px; color: #1A1A1A;"><div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #EAE5DB; border-radius: 12px; overflow: hidden; padding: 25px;"><h2 style="color: #1F3E29; border-bottom: 2px solid #D49A5B; padding-bottom: 10px; margin-top: 0;">New Form Submission Alerts</h2><p style="font-size: 13px;">A customer has submitted details on the <strong>${formType}</strong> of the website.</p><table style="width: 100%; border-collapse: collapse; margin: 20px 0; background-color: #F7F4EE;">${tableRows}</table><p style="font-size: 11px; color: #555555;">This is an automated system dispatch. Anjani Catering & Events Back-End Control Panel.</p></div></body></html>`;
     await transporter.sendMail({ from, to: adminEmail.replace(/[\r\n]/g, '').trim(), subject: subject.replace(/[\r\n]/g, '').trim(), html });
     console.log(`[Email] Admin notice sent to ${adminEmail}`);
     return { success: true };

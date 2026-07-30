@@ -3,7 +3,7 @@ import { ApiResponse } from '../utils/apiResponse.js';
 
 const defaultSettings = {
   companyName: 'Anjani Catering & Events',
-  companyEmail: 'info@akashraikwar.in',
+  companyEmail: 'sales@anjanievents.in',
   companyPhone: '+91-9685533878',
   companyAddress: 'Maharastra Marg, Rani ki Bagiya, Chhatarpur, MP 471001',
   siteTitle: 'Anjani Catering & Events — Best Caterer in Chhatarpur, MP',
@@ -13,8 +13,8 @@ const defaultSettings = {
   favicon: '',
   facebookUrl: 'https://www.facebook.com/anjanieventscatering/',
   instagramUrl: 'https://www.instagram.com/anjani_events__/',
-  linkedinUrl: 'https://linkedin.com/company/evengcatering',
-  youtubeUrl: 'https://youtube.com/@evengcatering',
+  linkedinUrl: '',
+  youtubeUrl: '',
   googleVerification: '-i0mdQZYNBta7fE0yMyrjSlz0O4qcw1nQtKdmG1PiY8',
   bingVerification: '',
   googleAnalyticsId: 'G-C1M79F0B9Q',

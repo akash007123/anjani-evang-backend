@@ -2,7 +2,7 @@ import { User } from '../models/User.js';
 import { hashPassword } from '../utils/password.js';
 import { ROLES } from '../constants/roles.js';
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@evengcatering.com';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'sales@anjanievents.in';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin123!';
 const ADMIN_NAME = process.env.ADMIN_NAME || 'Executive Admin';
 

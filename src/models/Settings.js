@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 const settingsSchema = new mongoose.Schema({
   // Business identity
   companyName: { type: String, default: 'Anjani Catering & Events' },
-  companyEmail: { type: String, default: 'info@akashraikwar.in' },
+  companyEmail: { type: String, default: 'sales@anjanievents.in' },
   companyPhone: { type: String, default: '+91-9685533878' },
   companyAddress: { type: String, default: 'Maharastra Marg, Rani ki Bagiya, Chhatarpur, MP 471001' },
 
@@ -17,8 +17,8 @@ const settingsSchema = new mongoose.Schema({
   // Social links
   facebookUrl: { type: String, default: 'https://www.facebook.com/anjanieventscatering/' },
   instagramUrl: { type: String, default: 'https://www.instagram.com/anjani_events__/' },
-  linkedinUrl: { type: String, default: 'https://linkedin.com/company/evengcatering' },
-  youtubeUrl: { type: String, default: 'https://youtube.com/@evengcatering' },
+  linkedinUrl: { type: String, default: '' },
+  youtubeUrl: { type: String, default: '' },
 
   // Verification & analytics
   googleVerification: { type: String, default: '-i0mdQZYNBta7fE0yMyrjSlz0O4qcw1nQtKdmG1PiY8' },

@@ -13,7 +13,7 @@ export const handleChatQuery = async (req, res, next) => {
     } else if (query.includes('menu') || query.includes('food') || query.includes('dish')) {
       responseText = "We offer a rich menu featuring Artisanal European Canapés, Royal Indian Tandoori & Mughlai delicacies, Pan-Asian Dim Sum bars, and Signature Pastry spreads. Check out our Menu page to view our seasonal offerings!";
     } else if (query.includes('contact') || query.includes('phone') || query.includes('email')) {
-      responseText = "You can reach our concierge team at +1 (800) 555-2283 or concierge@evengcatering.com. We operate 24/7 for event reservations.";
+      responseText = "You can reach our concierge team at +91-9685533878 or sales@anjanievents.in. We operate 24/7 for event reservations.";
     }
 
     return res.status(200).json(new ApiResponse(200, {

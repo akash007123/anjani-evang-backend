@@ -1,7 +1,7 @@
 {
-  "name": "eveng-catering-backend",
+  "name": "anjani-catering-backend",
   "version": "1.0.0",
-  "description": "Enterprise Express & MongoDB REST API Backend for Eveng Catering",
+  "description": "Enterprise Express & MongoDB REST API Backend for Anjani Catering & Events",
   "main": "src/server.js",
   "type": "module",
   "scripts": {
