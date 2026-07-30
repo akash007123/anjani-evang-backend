@@ -13,6 +13,8 @@ import { apiDocs } from './docs/swaggerSpec.js';
 
 const app = express();
 
+app.set('trust proxy', 1);
+
 // Compression
 app.use(compression());
 
