@@ -29,7 +29,7 @@ export const register = async (req, res, next) => {
     }
 
     const hashedPassword = await hashPassword(password);
-    const userRole = role || ROLES.ADMIN;
+    const userRole = role ? role.toLowerCase().replace(/\s+/g, '_') : ROLES.ADMIN;
 
     const newUser = await User.create({
       name,
