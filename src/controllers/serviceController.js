@@ -21,7 +21,7 @@ export const getServices = async (req, res, next) => {
     const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 50));
     const skip = (pageNum - 1) * limitNum;
 
-    let sortObj = { displayOrder: 1 };
+    let sortObj = { createdAt: 1 };
     if (sortBy === 'latest') sortObj = { createdAt: -1 };
     else if (sortBy === 'oldest') sortObj = { createdAt: 1 };
     else if (sortBy === 'title') sortObj = { title: 1 };
