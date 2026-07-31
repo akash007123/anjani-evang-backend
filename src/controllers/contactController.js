@@ -1,16 +1,39 @@
 import { Contact } from '../models/Contact.js';
 import { ApiResponse } from '../utils/apiResponse.js';
 import { ApiError } from '../utils/apiError.js';
-import { sendContactAckEmail } from '../utils/emailService.js';
+import { sendContactAckEmail, sendAdminNotification } from '../utils/emailService.js';
 import { createNotificationHelper } from '../utils/notificationService.js';
+
+function generateReference() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return `ANJ-${code}`;
+}
 
 export const submitContact = async (req, res, next) => {
   try {
-    const contact = await Contact.create(req.body);
-    sendContactAckEmail(contact).catch(() => {});
+    const contact = await Contact.create({ ...req.body, reference: generateReference() });
+
+    sendContactAckEmail(contact).catch((err) => {
+      console.error('[Contact] Customer thank-you email failed:', err.message);
+    });
+
+    sendAdminNotification('Contact Form', {
+      Reference: contact.reference,
+      Name: contact.name,
+      Email: contact.email,
+      Phone: contact.phone || '-',
+      'Event Date': contact.eventDate || '-',
+      'Guest Count': contact.guestCount || '-',
+      Message: contact.message
+    }).catch((err) => {
+      console.error('[Contact] Admin email notification failed:', err.message);
+    });
+
     createNotificationHelper({
       title: 'New Contact Inquiry',
-      message: `${contact.name} sent an inquiry${contact.eventType ? ` about ${contact.eventType}` : ''}`,
+      message: `${contact.name} sent an inquiry${contact.eventType ? ` about ${contact.eventType}` : ''} (Ref ${contact.reference})`,
       type: 'Contact',
       icon: 'MessageSquare',
       priority: 'Medium',

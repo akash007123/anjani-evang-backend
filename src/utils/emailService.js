@@ -31,6 +31,12 @@ export function getTransporter() {
   return transporter;
 }
 
+function getSenderFrom() {
+  if (process.env.SMTP_FROM) return process.env.SMTP_FROM;
+  if (process.env.SMTP_USER) return `"Anjani Catering & Events" <${process.env.SMTP_USER}>`;
+  return '"Anjani Catering & Events" <sales@anjanievents.in>';
+}
+
 function escapeHtml(unsafe) {
   if (!unsafe) return '';
   return String(unsafe)
@@ -41,95 +47,10 @@ function escapeHtml(unsafe) {
     .replace(/'/g, '&#039;');
 }
 
-export function generateBrandEmailHtml({
-  recipientName,
-  title,
-  subtitle,
-  badgeText,
-  summaryFields = [],
-  nextSteps = [],
-  ctaText = 'Visit Anjani Catering & Events',
-  ctaUrl = 'https://anjanievents.in'
-}) {
-  const summaryRowsHtml = summaryFields
-    .map(
-      (f) => `
-      <tr>
-        <td style="padding: 10px 14px; font-family: 'Arial', sans-serif; font-size: 13px; font-weight: bold; color: #102417; border-bottom: 1px solid #e2e8f0; width: 150px;">${escapeHtml(f.label)}</td>
-        <td style="padding: 10px 14px; font-family: 'Arial', sans-serif; font-size: 13px; color: #334155; border-bottom: 1px solid #e2e8f0;">${escapeHtml(f.value)}</td>
-      </tr>`
-    )
-    .join('');
-
-  const nextStepsHtml = nextSteps
-    .map(
-      (step, idx) => `
-      <li style="margin-bottom: 10px; font-family: 'Arial', sans-serif; font-size: 13px; color: #334155; line-height: 1.5;">
-        <strong style="color: #D4AF37;">Step 0${idx + 1}:</strong> ${escapeHtml(step)}
-      </li>`
-    )
-    .join('');
-
-  return `
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <title>${escapeHtml(title)}</title>
-    </head>
-    <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: Arial, sans-serif;">
-      <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 620px; margin: 30px auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05);">
-        <tr>
-          <td align="center" style="background-color: #102417; padding: 32px 24px; border-bottom: 4px solid #D4AF37;">
-            <div style="display: inline-block; width: 42px; height: 42px; border-radius: 10px; background-color: #D4AF37; text-align: center; line-height: 42px; color: #102417; font-weight: bold; font-size: 20px; margin-bottom: 10px;">अ</div>
-            <h1 style="margin: 0; font-family: Georgia, serif; font-size: 22px; font-weight: bold; color: #ffffff; letter-spacing: 2px;">ANJANI CATERING & EVENTS</h1>
-            <p style="margin: 4px 0 0 0; font-size: 11px; color: #D4AF37; font-weight: bold; letter-spacing: 1.5px; text-transform: uppercase;">Premium Wedding &amp; Event Catering</p>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding: 32px 32px 24px 32px;">
-            ${badgeText ? `<div style="display: inline-block; padding: 4px 12px; background-color: #fef3c7; color: #92400e; font-size: 11px; font-weight: bold; border-radius: 20px; margin-bottom: 16px;">${escapeHtml(badgeText)}</div>` : ''}
-            <h2 style="margin: 0 0 12px 0; font-family: Georgia, serif; font-size: 20px; color: #102417;">Dear ${escapeHtml(recipientName)},</h2>
-            <p style="margin: 0 0 24px 0; font-size: 14px; color: #475569; line-height: 1.6;">${subtitle}</p>
-            ${summaryFields.length > 0 ? `
-            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #fcfbf9; border: 1px solid #ebdcb9; border-radius: 12px; overflow: hidden; margin-bottom: 24px;">
-              <tr>
-                <td style="padding: 12px 14px; background-color: #fef9ed; border-bottom: 1px solid #ebdcb9;">
-                  <h3 style="margin: 0; font-size: 13px; font-weight: bold; color: #102417; text-transform: uppercase; letter-spacing: 0.5px;">Summary Details</h3>
-                </td>
-              </tr>
-              <tr>
-                <td style="padding: 4px 8px;">
-                  <table border="0" cellpadding="0" cellspacing="0" width="100%">${summaryRowsHtml}</table>
-                </td>
-              </tr>
-            </table>` : ''}
-            ${nextSteps.length > 0 ? `
-            <div style="padding: 20px; background-color: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 12px; margin-bottom: 24px;">
-              <h3 style="margin: 0 0 12px 0; font-family: Georgia, serif; font-size: 14px; color: #102417;">What Happens Next?</h3>
-              <ul style="margin: 0; padding: 0; list-style: none;">${nextStepsHtml}</ul>
-            </div>` : ''}
-            <div style="text-align: center; margin-top: 28px;">
-              <a href="${escapeHtml(ctaUrl)}" target="_blank" style="display: inline-block; padding: 12px 28px; background-color: #102417; color: #D4AF37; font-size: 13px; font-weight: bold; text-decoration: none; border-radius: 8px;">${escapeHtml(ctaText)}</a>
-            </div>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding: 24px 32px; background-color: #f1f5f9; border-top: 1px solid #e2e8f0; text-align: center; font-size: 12px; color: #64748b; line-height: 1.5;">
-            <p style="margin: 0 0 6px 0; font-weight: bold; color: #102417;">Anjani Catering & Events</p>
-            <p style="margin: 0 0 10px 0;">Direct Hotline: +91 98765 43210 | Email: sales@anjanievents.in</p>
-            <p style="margin: 0; font-size: 11px; color: #94a3b8;">&copy; ${new Date().getFullYear()} Anjani Catering & Events. All Rights Reserved.</p>
-          </td>
-        </tr>
-      </table>
-    </body>
-    </html>`;
-}
-
 export async function sendMail({ to, subject, html, text }) {
   try {
     const mailTransporter = getTransporter();
-    const from = process.env.SMTP_FROM || '"Anjani Catering & Events" <sales@anjanievents.in>';
+    const from = getSenderFrom();
     const info = await mailTransporter.sendMail({
       from,
       to,
@@ -147,24 +68,35 @@ export async function sendMail({ to, subject, html, text }) {
 
 export async function sendBookingAckEmail(bookingData) {
   if (!bookingData || !bookingData.email) return false;
-  const subject = `Booking Confirmation Received: Ref #${bookingData.bookingReference || 'ANJ-HOLD'}`;
-  const html = generateBrandEmailHtml({
-    recipientName: bookingData.fullName || 'Valued Client',
-    title: subject,
-    badgeText: 'RESERVATION HOLD ACKNOWLEDGMENT',
-    subtitle: `Thank you for choosing Anjani Catering & Events! We have successfully received your reservation inquiry for your upcoming <strong>${escapeHtml(bookingData.eventType || 'Event')}</strong>. Our banqueting concierge is reviewing your request.`,
+  const reference = bookingData.bookingReference || `BK-${(bookingData._id || '').toString().slice(-6).toUpperCase()}`;
+  const eventDate = new Date(bookingData.eventDate);
+  const eventDateStr = !isNaN(eventDate.getTime())
+    ? eventDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+    : 'TBD';
+  const subject = `Booking Confirmation Received: Ref #${reference}`;
+  const html = generateHtmlTemplate({
+    customerName: bookingData.fullName || 'Valued Guest',
+    subject,
+    mainTitle: 'Thank you for your booking request',
+    mainMessage: `Thank you for choosing Anjani Catering & Events! We have successfully received your reservation inquiry for your upcoming <strong>${escapeHtml(bookingData.eventType || 'Event')}</strong>. Our banqueting concierge is reviewing your request.`,
     summaryFields: [
-      { label: 'Booking Reference', value: `#${bookingData.bookingReference}` },
-      { label: 'Event Date & Time', value: `${bookingData.eventDate || 'TBD'} at ${bookingData.eventTime || '12:00 PM'}` },
+      { label: 'Booking Reference', value: `#${reference}` },
+      { label: 'Event Date & Time', value: `${eventDateStr} at ${bookingData.eventTime || '12:00 PM'}` },
       { label: 'Guest Count', value: `${bookingData.guestCount || 1} Guests` },
       { label: 'Preferred Cuisine', value: bookingData.preferredCuisine || 'Multi-Cuisine' },
       { label: 'Catering Package', value: bookingData.cateringPackage || 'Royal Buffet' },
-      { label: 'Venue Location', value: `${bookingData.venueAddress || 'Venue'}, ${bookingData.city || ''}` }
+      { label: 'Venue Location', value: `${bookingData.venueAddress || 'Venue'}${bookingData.city ? `, ${bookingData.city}` : ''}` }
     ],
     nextSteps: [
       'Our Executive Banquet Manager will check date slot availability on our central calendar.',
       'A dedicated concierge will contact you within 2 business hours to verify menu selections.',
       'We will schedule a complimentary food tasting session at our master kitchen.'
+    ],
+    ctaText: 'Visit Our Website',
+    ctaUrl: 'https://anjanievents.in',
+    socials: [
+      { label: 'Facebook', url: 'https://www.facebook.com/anjanieventscatering/' },
+      { label: 'Instagram', url: 'https://www.instagram.com/anjani_events__/' }
     ]
   });
   return sendMail({ to: bookingData.email, subject, html });
@@ -172,27 +104,39 @@ export async function sendBookingAckEmail(bookingData) {
 
 export async function sendContactAckEmail(contactData) {
   if (!contactData || !contactData.email) return false;
-  const subject = 'Inquiry Received: Thank you for contacting Anjani Catering & Events';
+  const reference = contactData.reference || `ANJ-${(contactData._id || '').toString().slice(-6).toUpperCase()}`;
+  const submittedOn = new Date(contactData.createdAt || new Date()).toLocaleString('en-IN', {
+    day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit'
+  });
+  const subject = `Inquiry Received – Ref #${reference}`;
   const summaryFields = [
+    { label: 'Inquiry Reference', value: `#${reference}` },
     { label: 'Name', value: contactData.name },
     { label: 'Email', value: contactData.email }
   ];
-  if (contactData.phone) summaryFields.push({ label: 'Phone Number', value: contactData.phone });
+  if (contactData.phone) summaryFields.push({ label: 'Mobile Number', value: contactData.phone });
   if (contactData.eventType) summaryFields.push({ label: 'Event Type', value: contactData.eventType });
   if (contactData.eventDate) summaryFields.push({ label: 'Target Event Date', value: contactData.eventDate });
-  if (contactData.guestCount) summaryFields.push({ label: 'Estimated Guests', value: `${contactData.guestCount} People` });
+  if (contactData.guestCount) summaryFields.push({ label: 'Guest Count', value: `${contactData.guestCount} Guests` });
   if (contactData.message) summaryFields.push({ label: 'Inquiry Message', value: contactData.message });
+  summaryFields.push({ label: 'Submitted On', value: submittedOn });
 
-  const html = generateBrandEmailHtml({
-    recipientName: contactData.name || 'Valued Guest',
-    title: subject,
-    badgeText: 'INQUIRY ACKNOWLEDGMENT',
-    subtitle: 'Thank you for reaching out to Anjani Catering & Events! We have received your inquiry. Our event planning representatives will review your preferences and respond promptly.',
+  const html = generateHtmlTemplate({
+    customerName: contactData.name || 'Valued Guest',
+    subject,
+    mainTitle: 'Thank you for contacting us',
+    mainMessage: 'We have successfully received your inquiry. Our event planning team is already reviewing your preferences, and a dedicated coordinator will contact you shortly with a customized catering proposal.',
     summaryFields,
     nextSteps: [
       'Our customer support team will analyze your specific inquiry and dietary preferences.',
       'An event coordinator will reach out to provide customized package recommendations and pricing options.',
       'We will schedule a personal consultation to tailor every culinary detail of your event.'
+    ],
+    ctaText: 'Visit Our Website',
+    ctaUrl: 'https://anjanievents.in',
+    socials: [
+      { label: 'Facebook', url: 'https://www.facebook.com/anjanieventscatering/' },
+      { label: 'Instagram', url: 'https://www.instagram.com/anjani_events__/' }
     ]
   });
   return sendMail({ to: contactData.email, subject, html });
@@ -200,7 +144,7 @@ export async function sendContactAckEmail(contactData) {
 
 // --- Frontend merged rich template system ---
 
-function generateHtmlTemplate({ customerName, subject, mainTitle, mainMessage, summaryFields, nextSteps, ctaText = 'Visit Our Website', ctaUrl = 'https://anjanievents.in' }) {
+function generateHtmlTemplate({ customerName, subject, mainTitle, mainMessage, summaryFields, nextSteps, ctaText = 'Visit Our Website', ctaUrl = 'https://anjanievents.in', socials = [] }) {
   const summaryRowsHtml = summaryFields
     .map(
       (f) => `
@@ -298,6 +242,10 @@ function generateHtmlTemplate({ customerName, subject, mainTitle, mainMessage, s
           <td align="center" style="padding: 30px 40px; background-color: #1F3E29; color: #A0AEC0;">
             <p style="margin: 0 0 10px 0; font-weight: 600; color: #D49A5B;">ANJANI CATERING & EVENTS INC.</p>
             <p style="margin: 0 0 15px 0;">Maharastra Marg, Rani ki Bagiya, Chhatarpur, Madhya Pradesh 471001</p>
+            ${socials.length > 0 ? `
+            <p style="margin: 0 0 15px 0;">
+              ${socials.map((s) => `<a href="${escapeHtml(s.url)}" target="_blank" style="display: inline-block; margin: 0 6px; padding: 8px 18px; background-color: rgba(212,154,91,0.15); color: #D49A5B; text-decoration: none; border-radius: 8px; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">${escapeHtml(s.label)}</a>`).join('')}
+            </p>` : ''}
             <p style="margin: 0;">&copy; ${new Date().getFullYear()} Anjani Catering & Events. All Rights Reserved.</p>
           </td>
         </tr>
@@ -309,7 +257,7 @@ function generateHtmlTemplate({ customerName, subject, mainTitle, mainMessage, s
 async function safeSendMail(to, subject, html, formType) {
   try {
     const transporter = getTransporter();
-    const from = process.env.SMTP_FROM || '"Anjani Catering & Events" <sales@anjanievents.in>';
+    const from = getSenderFrom();
     const cleanTo = to.replace(/[\r\n]/g, '').trim();
     const cleanSubject = subject.replace(/[\r\n]/g, '').trim();
 
@@ -326,21 +274,6 @@ async function safeSendMail(to, subject, html, formType) {
     console.error(`[Email] Failed for ${to} [${formType}]:`, error.message);
     return { success: false, error: error.message };
   }
-}
-
-export async function sendContactConfirmation(data) {
-  const subject = 'Thank You for Contacting Us!';
-  const mainMessage = 'We have successfully received your inquiry request. Our premium kitchen designers and event planning team are already analyzing your message. We look forward to translating your event goals into a magnificent culinary experience.';
-  const summaryFields = [{ label: 'Name', value: data.name }, { label: 'Email', value: data.email }];
-  if (data.phone) summaryFields.push({ label: 'Phone Number', value: data.phone });
-  if (data.eventDate) summaryFields.push({ label: 'Target Event Date', value: data.eventDate });
-  if (data.guests) summaryFields.push({ label: 'Guest Count', value: String(data.guests) });
-  if (data.message) summaryFields.push({ label: 'Inquiry/Message', value: data.message });
-  const html = generateHtmlTemplate({
-    customerName: data.name, subject, mainTitle: 'Thank you for contacting us', mainMessage, summaryFields,
-    nextSteps: ['Our catering planners will review your request within 2 business hours.', 'Sarah, our coordinating event manager, will call you to clarify dietary needs and guest profiles.', 'We will outline customized traditional & fusion menus matching your scale.', 'We will finalize event logistics, banquet layouts, and schedule a private food tasting.']
-  });
-  return safeSendMail(data.email, subject, html, 'Contact Form');
 }
 
 export async function sendBookingConfirmation(data) {
@@ -490,7 +423,7 @@ export async function sendAdminNotification(formType, data) {
 
   try {
     const transporter = getTransporter();
-    const from = process.env.SMTP_FROM || '"Anjani Catering & Events" <sales@anjanievents.in>';
+    const from = getSenderFrom();
     const subject = `[Admin Notification] New submission on ${formType}`;
     const tableRows = Object.entries(data)
       .map(([key, val]) => `

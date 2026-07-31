@@ -1,5 +1,5 @@
 import { saveContactInquiry, saveCalendarBooking, saveCateringOrder, saveNewsletterSubscriber } from '../services/databaseService.js';
-import { sendContactConfirmation, sendBookingConfirmation, sendOrderConfirmation, sendNewsletterConfirmation, sendProductInquiryConfirmation, sendQuoteRequestConfirmation } from '../utils/emailService.js';
+import { sendContactAckEmail, sendBookingConfirmation, sendOrderConfirmation, sendNewsletterConfirmation, sendProductInquiryConfirmation, sendQuoteRequestConfirmation } from '../utils/emailService.js';
 import { createNotificationHelper } from '../utils/notificationService.js';
 
 export async function submitContactInquiry(req, res) {
@@ -21,7 +21,7 @@ export async function submitContactInquiry(req, res) {
         console.error('Async quote-request confirmation email failed:', err);
       });
     } else {
-      sendContactConfirmation(contactData).catch(err => {
+      sendContactAckEmail({ ...contactData, guestCount: guests ? Number(guests) : undefined, reference: saved.reference }).catch(err => {
         console.error('Async contact confirmation email failed:', err);
       });
     }

@@ -2,16 +2,41 @@ import { Booking } from '../models/Booking.js';
 import { ApiResponse } from '../utils/apiResponse.js';
 import { ApiError } from '../utils/apiError.js';
 import { BOOKING_STATUS } from '../constants/status.js';
-import { sendBookingAckEmail } from '../utils/emailService.js';
+import { sendBookingAckEmail, sendAdminNotification } from '../utils/emailService.js';
 import { createNotificationHelper } from '../utils/notificationService.js';
+
+function generateBookingReference() {
+  const suffix = Math.random().toString(36).slice(2, 8).toUpperCase();
+  return `BK-${suffix}`;
+}
 
 export const createBooking = async (req, res, next) => {
   try {
-    const booking = await Booking.create(req.body);
-    sendBookingAckEmail(booking).catch(() => {});
+    const payload = { ...req.body, bookingReference: generateBookingReference() };
+    const booking = await Booking.create(payload);
+    sendBookingAckEmail(booking)
+      .then((result) => {
+        if (result && result.success === false) console.error('[Booking email] Customer email failed:', result.error);
+      })
+      .catch((err) => console.error('[Booking email] Customer email error:', err.message));
+    sendAdminNotification('Event Booking', {
+      'Booking Reference': `#${booking.bookingReference}`,
+      Name: booking.fullName,
+      Email: booking.email,
+      Mobile: booking.phone,
+      'Event Type': booking.eventType,
+      'Event Date': new Date(booking.eventDate).toLocaleDateString('en-IN'),
+      Guests: booking.guestCount,
+      Budget: `₹${booking.budget || 0}`,
+      Venue: `${booking.venueAddress}${booking.city ? `, ${booking.city}` : ''}`
+    })
+      .then((result) => {
+        if (result && result.success === false) console.error('[Booking email] Admin notification failed:', result.error);
+      })
+      .catch((err) => console.error('[Booking email] Admin notification error:', err.message));
     createNotificationHelper({
       title: 'New Booking Received',
-      message: `${booking.fullName} booked for ${booking.eventType} on ${new Date(booking.eventDate).toLocaleDateString()}`,
+      message: `${booking.fullName} booked for ${booking.eventType} on ${new Date(booking.eventDate).toLocaleDateString()} (Ref #${booking.bookingReference})`,
       type: 'Booking',
       icon: 'CalendarCheck',
       priority: 'High',
