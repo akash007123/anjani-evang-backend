@@ -18,7 +18,8 @@ export const seedAdmin = async () => {
     await User.create({
       name: ADMIN_NAME,
       email: ADMIN_EMAIL,
-      mobile: '+1 (800) 555-2283',
+      username: ADMIN_EMAIL,
+      mobile: '+91 96855 33878',
       password: hashedPassword,
       role: ROLES.SUPER_ADMIN,
       verified: true,

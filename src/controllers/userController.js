@@ -96,7 +96,7 @@ export const createUser = async (req, res, next) => {
       name,
       email,
       mobile,
-      username,
+      username: username || undefined,
       password: hashedPassword,
       role: (body.role || 'admin').toLowerCase(),
       profilePicture: body.profilePicture || body.avatar || '',
