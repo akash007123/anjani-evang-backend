@@ -107,7 +107,11 @@ export const createUser = async (req, res, next) => {
     const user = await User.create(userData);
     const { password, ...safeUser } = user.toObject();
 
-    sendWelcomeEmail({ name, email, username, role: userData.role }, body.password);
+    sendWelcomeEmail({ name, email, username, role: userData.role }, body.password)
+      .then((result) => {
+        if (result && result.success === false) console.error('[User email] Welcome email failed:', result.error);
+      })
+      .catch((err) => console.error('[User email] Welcome email error:', err.message));
 
     createNotificationHelper({
       title: 'New User Created',
@@ -243,7 +247,11 @@ export const resetUserPassword = async (req, res, next) => {
     const updated = await User.findByIdAndUpdate(id, { password: hashedPwd, updatedBy: req.user?.id || null }, { runValidators: true });
     if (!updated) return next(new ApiError(404, 'User not found'));
 
-    sendPasswordResetEmail({ name: updated.name, email: updated.email }, password);
+    sendPasswordResetEmail({ name: updated.name, email: updated.email }, password)
+      .then((result) => {
+        if (result && result.success === false) console.error('[User email] Password reset email failed:', result.error);
+      })
+      .catch((err) => console.error('[User email] Password reset email error:', err.message));
 
     createNotificationHelper({
       title: 'Password Reset',

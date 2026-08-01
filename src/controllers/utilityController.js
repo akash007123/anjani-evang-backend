@@ -1,5 +1,5 @@
-import { saveContactInquiry, saveCalendarBooking, saveCateringOrder, saveNewsletterSubscriber } from '../services/databaseService.js';
-import { sendContactAckEmail, sendBookingConfirmation, sendOrderConfirmation, sendNewsletterConfirmation, sendProductInquiryConfirmation, sendQuoteRequestConfirmation } from '../utils/emailService.js';
+import { saveContactInquiry, saveCalendarBooking, saveCateringOrder } from '../services/databaseService.js';
+import { sendContactAckEmail, sendBookingConfirmation, sendOrderConfirmation, sendProductInquiryConfirmation, sendQuoteRequestConfirmation } from '../utils/emailService.js';
 import { createNotificationHelper } from '../utils/notificationService.js';
 
 export async function submitContactInquiry(req, res) {
@@ -116,26 +116,6 @@ export async function submitCateringOrder(req, res) {
     return res.status(201).json({ success: true, order: saved });
   } catch (error) {
     console.error('Error saving catering order:', error);
-    return res.status(500).json({ error: error.message || 'Internal Server Error' });
-  }
-}
-
-export async function subscribeNewsletter(req, res) {
-  try {
-    const { email } = req.body;
-    if (!email) {
-      return res.status(400).json({ error: 'Email is a required field.' });
-    }
-
-    const saved = await saveNewsletterSubscriber(email);
-
-    sendNewsletterConfirmation(email).catch(err => {
-      console.error('Async newsletter confirmation email failed:', err);
-    });
-
-    return res.status(201).json({ success: true, subscriber: saved });
-  } catch (error) {
-    console.error('Error registering newsletter subscription:', error);
     return res.status(500).json({ error: error.message || 'Internal Server Error' });
   }
 }

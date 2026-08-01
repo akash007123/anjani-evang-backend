@@ -24,11 +24,23 @@ export function getTransporter() {
       port,
       secure,
       auth: { user, pass },
-      tls: { rejectUnauthorized: false }
+      tls: { rejectUnauthorized: false },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 10000
     });
   }
 
   return transporter;
+}
+
+function formatSmtpError(error) {
+  const parts = [`code=${error.code || 'unknown'}`];
+  if (error.responseCode) parts.push(`responseCode=${error.responseCode}`);
+  if (error.response) parts.push(`response=${error.response}`);
+  if (error.command) parts.push(`command=${error.command}`);
+  parts.push(`message=${error.message || ''}`);
+  return parts.join(' ');
 }
 
 function getSenderFrom() {
@@ -49,17 +61,22 @@ function getSenderFrom() {
 }
 
 export function logSmtpHealth() {
+  const vars = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_SECURE', 'SMTP_USER', 'SMTP_PASS', 'SMTP_FROM', 'ADMIN_EMAIL'];
+  vars.forEach((v) => {
+    console.log(`[Email] Env ${v}: ${process.env[v] ? 'loaded' : 'MISSING'}`);
+  });
+
   const host = process.env.SMTP_HOST;
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
   const port = Number(process.env.SMTP_PORT) || 587;
   const mode = host && user && pass ? 'real SMTP' : 'streamTransport (emails NOT delivered)';
-  console.log(`[Email] SMTP health: mode=${mode} host=${host || '(none)'} user=${user || '(none)'} port=${port} from=${getSenderFrom()}`);
+  console.log(`[Email] SMTP health: mode=${mode} host=${host || '(none)'} port=${port} from=${getSenderFrom()}`);
   if (mode === 'real SMTP') {
     const t = getTransporter();
     t.verify()
       .then(() => console.log('[Email] SMTP health: verify() OK - credentials accepted by mail server.'))
-      .catch((err) => console.error(`[Email] SMTP health: verify() FAILED - ${err.message}`));
+      .catch((err) => console.error(`[Email] SMTP health: verify() FAILED - ${formatSmtpError(err)}`));
   }
 }
 
@@ -74,20 +91,22 @@ function escapeHtml(unsafe) {
 }
 
 export async function sendMail({ to, subject, html, text }) {
+  const cleanTo = String(to || '').replace(/[\r\n]/g, '').trim();
+  console.log(`[EMAIL] Sending -> ${cleanTo} | Subject: "${subject}"`);
   try {
     const mailTransporter = getTransporter();
     const from = getSenderFrom();
     const info = await mailTransporter.sendMail({
       from,
-      to,
+      to: cleanTo,
       subject,
       html,
       text: text || 'Thank you for contacting Anjani Catering & Events.'
     });
-    console.log(`[Email] Dispatched to ${to} (Subject: "${subject}")`);
+    console.log(`[EMAIL SUCCESS] Message ID: ${info.messageId} -> ${cleanTo} | Subject: "${subject}"`);
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error(`[Email] Error sending to ${to}:`, error.message);
+    console.error(`[EMAIL FAILED] -> ${cleanTo} | Subject: "${subject}" | ${formatSmtpError(error)}`);
     return { success: false, error: error.message };
   }
 }
@@ -281,11 +300,12 @@ function generateHtmlTemplate({ customerName, subject, mainTitle, mainMessage, s
 }
 
 async function safeSendMail(to, subject, html, formType) {
+  const cleanTo = String(to || '').replace(/[\r\n]/g, '').trim();
+  console.log(`[EMAIL] Sending [${formType}] -> ${cleanTo} | Subject: "${subject}"`);
   try {
     const transporter = getTransporter();
     const from = getSenderFrom();
-    const cleanTo = to.replace(/[\r\n]/g, '').trim();
-    const cleanSubject = subject.replace(/[\r\n]/g, '').trim();
+    const cleanSubject = String(subject || '').replace(/[\r\n]/g, '').trim();
 
     const info = await transporter.sendMail({ from, to: cleanTo, subject: cleanSubject, html });
 
@@ -294,10 +314,10 @@ async function safeSendMail(to, subject, html, formType) {
       console.log(`[EMAIL SIMULATION] Sent to: ${cleanTo}`);
     }
 
-    console.log(`[Email] Confirmation sent to ${cleanTo} for [${formType}]`);
+    console.log(`[EMAIL SUCCESS] [${formType}] Message ID: ${info.messageId} -> ${cleanTo}`);
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error(`[Email] Failed for ${to} [${formType}]:`, error.message);
+    console.error(`[EMAIL FAILED] [${formType}] -> ${cleanTo} | ${formatSmtpError(error)}`);
     return { success: false, error: error.message };
   }
 }
@@ -447,6 +467,8 @@ export async function sendAdminNotification(formType, data) {
   const adminEmail = process.env.ADMIN_EMAIL;
   if (!adminEmail) return { success: true, bypassed: true };
 
+  const cleanAdmin = adminEmail.replace(/[\r\n]/g, '').trim();
+  console.log(`[EMAIL] Sending admin notification [${formType}] -> ${cleanAdmin}`);
   try {
     const transporter = getTransporter();
     const from = getSenderFrom();
@@ -459,11 +481,11 @@ export async function sendAdminNotification(formType, data) {
       </tr>`)
       .join('');
     const html = `<!DOCTYPE html><html><body style="font-family: Arial, sans-serif; background-color: #FDFBF7; padding: 25px; color: #1A1A1A;"><div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #EAE5DB; border-radius: 12px; overflow: hidden; padding: 25px;"><h2 style="color: #1F3E29; border-bottom: 2px solid #D49A5B; padding-bottom: 10px; margin-top: 0;">New Form Submission Alerts</h2><p style="font-size: 13px;">A customer has submitted details on the <strong>${formType}</strong> of the website.</p><table style="width: 100%; border-collapse: collapse; margin: 20px 0; background-color: #F7F4EE;">${tableRows}</table><p style="font-size: 11px; color: #555555;">This is an automated system dispatch. Anjani Catering & Events Back-End Control Panel.</p></div></body></html>`;
-    await transporter.sendMail({ from, to: adminEmail.replace(/[\r\n]/g, '').trim(), subject: subject.replace(/[\r\n]/g, '').trim(), html });
-    console.log(`[Email] Admin notice sent to ${adminEmail}`);
+    await transporter.sendMail({ from, to: cleanAdmin, subject: subject.replace(/[\r\n]/g, '').trim(), html });
+    console.log(`[EMAIL SUCCESS] Admin notice [${formType}] -> ${cleanAdmin}`);
     return { success: true };
   } catch (error) {
-    console.error('[Email] Admin notification failed:', error);
+    console.error(`[EMAIL FAILED] Admin notification [${formType}] -> ${cleanAdmin} | ${formatSmtpError(error)}`);
     return { success: false, error: error.message };
   }
 }

@@ -1,6 +1,7 @@
 import { Newsletter } from '../models/Newsletter.js';
 import { ApiResponse } from '../utils/apiResponse.js';
 import { ApiError } from '../utils/apiError.js';
+import { sendNewsletterConfirmation } from '../utils/emailService.js';
 import { createNotificationHelper } from '../utils/notificationService.js';
 
 export const getSubscribers = async (req, res, next) => {
@@ -57,6 +58,13 @@ export const subscribeNewsletter = async (req, res, next) => {
       },
       { upsert: true, new: true }
     ).lean();
+
+    // Trigger thank-you email asynchronously (never blocks the subscribe response)
+    sendNewsletterConfirmation(subscriber.email)
+      .then((result) => {
+        if (result && result.success === false) console.error('[Newsletter email] Confirmation email failed:', result.error);
+      })
+      .catch((err) => console.error('[Newsletter email] Confirmation email error:', err.message));
 
     // Trigger admin notification asynchronously
     createNotificationHelper({
