@@ -32,9 +32,35 @@ export function getTransporter() {
 }
 
 function getSenderFrom() {
-  if (process.env.SMTP_FROM) return process.env.SMTP_FROM;
+  if (process.env.SMTP_FROM) {
+    if (process.env.SMTP_USER) {
+      const fromMatch = process.env.SMTP_FROM.match(/<([^>]+)>/);
+      const fromEmail = fromMatch ? fromMatch[1].trim().toLowerCase() : process.env.SMTP_FROM.trim().toLowerCase();
+      const smtpUser = process.env.SMTP_USER.trim().toLowerCase();
+      if (fromEmail && fromEmail !== smtpUser) {
+        console.warn(`[Email] SMTP_FROM address (${fromEmail}) does not match SMTP_USER (${process.env.SMTP_USER}); using SMTP_USER as sender.`);
+        return `"Anjani Catering & Events" <${process.env.SMTP_USER}>`;
+      }
+    }
+    return process.env.SMTP_FROM;
+  }
   if (process.env.SMTP_USER) return `"Anjani Catering & Events" <${process.env.SMTP_USER}>`;
   return '"Anjani Catering & Events" <sales@anjanievents.in>';
+}
+
+export function logSmtpHealth() {
+  const host = process.env.SMTP_HOST;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  const port = Number(process.env.SMTP_PORT) || 587;
+  const mode = host && user && pass ? 'real SMTP' : 'streamTransport (emails NOT delivered)';
+  console.log(`[Email] SMTP health: mode=${mode} host=${host || '(none)'} user=${user || '(none)'} port=${port} from=${getSenderFrom()}`);
+  if (mode === 'real SMTP') {
+    const t = getTransporter();
+    t.verify()
+      .then(() => console.log('[Email] SMTP health: verify() OK - credentials accepted by mail server.'))
+      .catch((err) => console.error(`[Email] SMTP health: verify() FAILED - ${err.message}`));
+  }
 }
 
 function escapeHtml(unsafe) {

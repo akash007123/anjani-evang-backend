@@ -8,6 +8,7 @@ import { connectDb } from './services/databaseService.js';
 import { setupSocket } from './socket/index.js';
 import { seedAdmin } from './seeds/adminSeed.js';
 import { seedSettings } from './seeds/settingsSeed.js';
+import { logSmtpHealth } from './utils/emailService.js';
 
 const PORT = process.env.PORT || 3000;
 
@@ -25,6 +26,7 @@ async function startServer() {
 
   httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`[Backend] Eveng Catering API Server running on port ${PORT}`);
+    logSmtpHealth();
   });
 }
 
